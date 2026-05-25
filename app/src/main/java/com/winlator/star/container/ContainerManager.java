@@ -190,8 +190,10 @@ public class ContainerManager {
         for (Container container : containers) {
             File desktopDir = container.getDesktopDir();
             ArrayList<File> files = new ArrayList<>();
-            if (desktopDir.exists())
-                files.addAll(Arrays.asList(desktopDir.listFiles()));
+            if (desktopDir.exists()) {
+                File[] listed = desktopDir.listFiles();
+                if (listed != null) files.addAll(Arrays.asList(listed));
+            }
             if (files != null) {
                 for (File file : files) {
                     String fileName = file.getName();
