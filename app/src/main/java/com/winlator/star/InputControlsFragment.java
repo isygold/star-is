@@ -90,7 +90,7 @@ public class InputControlsFragment extends Fragment {
         manager = new InputControlsManager(getContext());
 
         preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-        isDarkMode = preferences.getBoolean("dark_mode", false);
+        isDarkMode = preferences.getBoolean("dark_mode", true);
     }
 
     @Override
@@ -202,6 +202,13 @@ public class InputControlsFragment extends Fragment {
             android.widget.PopupMenu popupMenu = new PopupMenu(context, v);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) popupMenu.setForceShowIcon(true);
             popupMenu.inflate(R.menu.open_file_popup_menu);
+            int tint = getResources().getColor(R.color.colorAccent, context.getTheme());
+            if (popupMenu.getMenu().findItem(R.id.open_file) != null && popupMenu.getMenu().findItem(R.id.open_file).getIcon() != null) {
+                popupMenu.getMenu().findItem(R.id.open_file).getIcon().setTint(tint);
+            }
+            if (popupMenu.getMenu().findItem(R.id.download_file) != null && popupMenu.getMenu().findItem(R.id.download_file).getIcon() != null) {
+                popupMenu.getMenu().findItem(R.id.download_file).getIcon().setTint(tint);
+            }
             popupMenu.setOnMenuItemClickListener((menuItem) -> {
                 int itemId = menuItem.getItemId();
                 if (itemId == R.id.open_file) {

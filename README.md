@@ -2,7 +2,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/downloads/jacojayy/star/total" alt="Total Downloads" width="150">
+  <img src="https://img.shields.io/github/downloads/star-emu/star/total" alt="Total Downloads" width="150">
 </p>
 
 <h1 align="center"> star -
@@ -10,10 +10,14 @@ Windows applications and games on Android.</h1>
 
 **star** is an application that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
 
-- **Package:** `com.winlator.star`
+**Informations:**
+- **Package:** `com.winlator.star` (standard), `com.tencent.ig` (pubg), `com.ludashi.benchmark` (ludashi)
+
 - **Version:** `v1.2-REVAMPED` (build identifier `7.1.4x-cmod`, versionCode `20`)
+
 - **Android SDK:** `compileSdk 34`, `targetSdk 28`, `minSdk 26` (Android 8.0+)
-- **Upstream lineage:** Winlator → cmod → Bionic Nightly → Star → Star Bionic (Compose)
+
+- **Upstream lineage:** Winlator → cmod → Bionic Nightly → star Bionic**
 
 ---
 
@@ -25,30 +29,12 @@ Windows applications and games on Android.</h1>
 
 ---
 
-## What's in this fork
-
-- **Full Jetpack Compose UI.** Every user-facing screen, dialog, drawer, and overlay has been ported off Java/XML to Compose + Material 3. This is the only Winlator fork to do this.
-- **In-game Compose overlays.** Side drawer, settings dialogs, screen-effects panel, and task manager all run as Compose `Dialog` windows over the X server.
-- **Dynamic theme system.** `AppThemeState` + `ThemePreset` allow live color/theme switching.
-- **Controller support restored to Star 1.1 parity.** SDL2 SoName symlink wired into the Compose splash install path; all four controller event files pre-created at startup.
-- **Box64 dropdown bug fix.** Edit-dialog now seeds the Box64 selector from the saved container value instead of resetting on dependency refresh.
-- **Bionic content pattern.** Ships the larger `container_pattern_common.tzst` (bionic build, ~77 MB) for an expanded Start menu toolset.
-- **Adreno-tuned drivers bundled.** SDK36 patched Turnip, AdrenoTools v819, and Wrapper variants (gamenative, leegao, legacy, original).
-
 ## Building
 
 This project is built via **GitHub Actions only**. Local builds are not supported.
 
 
 Artifacts are published as workflow artifacts; tagged stable builds are also published as GitHub Releases.
-
----
-
-## Documentation in this repo
-
-- `COMPOSE_MIGRATION_REPORT.md` — developer guide for the Java/XML → Compose migration (Parts A–G), including patterns, gotchas, and the engine boundary.
-- `PROGRESS_LOG.md` — chronological record of every shipped change.
-- `UI_MIGRATION_REPORT.md` — remaining UI cleanup and migration plan.
 
 ---
 
@@ -61,7 +47,7 @@ This fork stands on a long chain of prior work. Credit, in lineage order:
 | **brunodev85** | Original [Winlator](https://github.com/brunodev85/winlator) — Wine + Box64 + Turnip on Android. Foundation of every fork below. Also serves the `input_controls` profiles consumed by this fork: <https://raw.githubusercontent.com/brunodev85/winlator/main/input_controls/> |
 | **coffincolors** | [`cmod` Winlator fork](https://github.com/coffincolors/winlator) — package `com.winlator.cmod` and the customization layer this codebase is built on. |
 | **Pipetto-crypto** | [Winlator Bionic fork](https://github.com/Pipetto-crypto/winlator) (the "Bionic" half of *Star Bionic*) and the upstream [Box64 fix branch](https://github.com/Pipetto-crypto/box64). Co-credited on cmod. |
-| **jacojayy** | Maintainer of the [Star](https://github.com/jacojayy/star) line. SDK36 patches in the bundled Turnip driver for newer DXVK compatibility. |
+| **jacojayy** | Maintainer of the [Star](https://github.com/jacojayy/star) line. Timeline Semaphore patches in the bundled Turnip driver for newer DXVK compatibility. Official site developer and mantainer. |
 | **vivsi** | Controller support contributions. |
 | **The412Banner** | Full Jetpack Compose UI migration, in-game overlay rewrite, controller-support restore (SDL2 SoName fix + four event files), Box64 edit-dialog fix, theme system, and CI/release infrastructure. Also maintains the [Nightlies WCP Hub](https://github.com/The412Banner/Nightlies) and [Banners-Turnip](https://github.com/The412Banner/Banners-Turnip). |
 
@@ -83,12 +69,12 @@ The Wine/translation stack this app bundles or downloads:
 - **Turnip / Mesa** — [Freedreno team @ Mesa](https://gitlab.freedesktop.org/mesa/mesa)
 - **Proton layers (bionic)** — [GameNative](https://github.com/utkarshdalal/GameNative)
 
-Credits surfaced in the **Star Bionic REVAMPED** release (`star.bionic-revamp`):
+Credits surfaced in the **star Bionic REVAMPED** project (`star.bionic-revamp`):
 
 - **@The412Banner** — Converting the UI to Jetpack Compose and rewriting the controller implementation.
-- **@jacojayy** — SDK36 patches in Turnip.
+- **@jacojayy** — Timeline Semaphore patches in Turnip.
 
-If you have contributed and are not listed, open an issue or PR — this list is intended to be complete.
+If you have contributed and are not listed, open a PR — this list is intended to be complete.
 
 ---
 

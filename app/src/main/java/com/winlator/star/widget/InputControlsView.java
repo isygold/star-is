@@ -631,6 +631,12 @@ public class InputControlsView extends View {
     }
 
     public void handleInputEvent(ExternalController controller, Binding binding, boolean isActionDown, float offset, boolean sendUpdate) {
+        // Unbound slots (Binding.NONE) carry XKeycode.KEY_NONE (id 0). Without this guard they fall
+        // through to injectKeyPress(KEY_NONE) -> keyboard.setKeyPress(0,0), which is NOT guarded against
+        // keycode 0 and dispatches a phantom key event. The beta4 gamepad rewrite (ca13e7f) made BUTTON
+        // press/release fire getBindingAt(1) unconditionally, so a normal one-binding button injected this
+        // junk event on every tap. Skip NONE here; real dual-binding buttons still fire when slot 1 is set.
+        if (binding == Binding.NONE) return;
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (binding.isGamepad()) {
             GamepadState state = (controller != null) ? controller.remappedState : profile.getGamepadState();
