@@ -17,7 +17,7 @@ Windows applications and games on Android.</h1>
 
 - **Android SDK:** `compileSdk 34`, `targetSdk 28`, `minSdk 26` (Android 8.0+)
 
-- **Upstream lineage:** Winlator → cmod → Bionic Nightly → star Bionic**
+- **Upstream lineage:** Winlator → cmod → Bionic Nightly → star Bionic
 
 ---
 
