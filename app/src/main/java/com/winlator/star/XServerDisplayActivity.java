@@ -357,10 +357,30 @@ public class XServerDisplayActivity extends AppCompatActivity {
         state.onVibration              = () -> showVibrationDialog();
         state.onLsfgToggle              = () -> {
             boolean current = XServerDrawerState.INSTANCE.getLsfgEnabled();
-            XServerDrawerState.INSTANCE.setLsfgEnabled(!current);
+            boolean next = !current;
+            XServerDrawerState.INSTANCE.setLsfgEnabled(next);
+            // Vulkan layers are loaded at vkCreateInstance — cannot hot-toggle
+            String msg = next
+                ? "Vegas FrameGen enabled — restart container to apply"
+                : "Vegas FrameGen disabled — restart container to apply";
+            showToast(XServerDisplayActivity.this, msg);
         };
         state.onApplyLsfg               = () -> {
-            // LSFG settings changed - apply to the running environment
+            // Write current LSFG params to a config file the layer can poll
+            try {
+                XServerDrawerState s = XServerDrawerState.INSTANCE;
+                File tmpDir = new File(getCacheDir(), "lsfg");
+                if (!tmpDir.isDirectory() && !tmpDir.mkdirs()) return;
+                String cfg = "multiplier=" + s.getLsfgMultiplier()
+                    + "\nquality=" + s.getLsfgQuality()
+                    + "\nflow_scale=" + s.getLsfgFlowScale()
+                    + "\nmax_latency=" + s.getLsfgMaxLatency()
+                    + "\ngpu_arch=" + s.getLsfgGpuArch();
+                com.winlator.star.core.FileUtils.writeString(
+                    new File(tmpDir, "config.txt"), cfg);
+            } catch (Exception ignored) {
+                // Best-effort config write
+            }
         };
         state.onResetLsfg               = () -> {
             // Reset to GPU defaults using GLES detection
@@ -1325,6 +1345,9 @@ public class XServerDisplayActivity extends AppCompatActivity {
             drawState.setLsfgFlowScale(container.getLsfgFlowScale());
             drawState.setLsfgMaxLatency(container.getLsfgMaxLatency());
             drawState.setLsfgGpuArch(container.getLsfgGpuArch());
+            // Custom lossless.dll is handled by GuestProgramLauncherComponent
+            // during env setup — not synced to runtime drawer state since
+            // the layer reads it at init time (LSFG_DLL_PATH env var).
         }
         
     }
