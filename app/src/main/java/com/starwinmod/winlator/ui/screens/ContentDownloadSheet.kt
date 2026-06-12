@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.starwinmod.winlator.R
 import com.starwinmod.winlator.contents.ContentProfile
 import com.starwinmod.winlator.contents.ContentsManager
 import com.starwinmod.winlator.contents.Downloader
@@ -261,7 +263,7 @@ fun ContentDownloadSheet(
                             onInfo = { showInfoProfile = profile },
                             onRemove = { confirmRemoveProfile = profile },
                         )
-                        Divider(color = DividerColor)
+                        HorizontalDivider(color = DividerColor)
                     }
                 }
             }

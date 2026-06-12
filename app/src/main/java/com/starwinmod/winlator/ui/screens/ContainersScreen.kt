@@ -69,6 +69,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.starwinmod.winlator.XServerDisplayActivity
 import com.starwinmod.winlator.XrActivity
+import com.starwinmod.winlator.box64.Box64Preset
 import com.starwinmod.winlator.container.Container
 import com.starwinmod.winlator.core.FileUtils
 import com.starwinmod.winlator.core.StringUtils
@@ -457,7 +458,7 @@ private fun VegasContainerCard(
                     }
 
                     // Box64 indicator
-                    if (container.box64Preset != 0) {
+                    if (container.box64Preset != Box64Preset.COMPATIBILITY) {
                         Box(
                             modifier = Modifier
                                 .background(Tertiary.copy(alpha = 0.12f), RoundedCornerShape(4.dp))

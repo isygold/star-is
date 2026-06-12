@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.starwinmod.winlator.R
 import com.starwinmod.winlator.contents.ContentProfile
 import com.starwinmod.winlator.contents.ContentsManager
 import com.starwinmod.winlator.contents.Downloader
@@ -99,11 +101,9 @@ fun VegasDownloadSheet(
     // Load locally installed VEGAS profiles to mark them
     LaunchedEffect(Unit) {
         cm.syncContents()
-        val installed = cm.profiles.filter {
-            it.type == ContentProfile.CONTENT_TYPE_VEGAS
-        }.mapNotNull { profile ->
-            profile.verName?.removePrefix("vegas-")
-        }.toSet()
+        val installed = cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+            ?.mapNotNull { it.verName?.removePrefix("vegas-") }
+            ?.toSet() ?: emptySet()
         installedVersions = installed
     }
 
@@ -232,7 +232,9 @@ fun VegasDownloadSheet(
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 2.sp,
-                                brush = Brush.linearGradient(listOf(Primary, Secondary)),
+                                style = TextStyle(
+                                    brush = Brush.linearGradient(listOf(Primary, Secondary))
+                                ),
                             )
                             Text(
                                 text = "Select a release to download and install",

@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -266,8 +267,8 @@ fun SplashScreen(
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 6.sp,
-                brush = VegasLogoGradient,
                 textAlign = TextAlign.Center,
+                style = TextStyle(brush = VegasLogoGradient),
             )
 
             Spacer(Modifier.height(4.dp))
