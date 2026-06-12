@@ -1,7 +1,7 @@
 # Steam Integration — Implementation Report
 
 **Last updated:** 2026-04-16
-**Applies to:** Star Plus (`com.winlator.star`) / Ludashi Plus (`com.winlator.cmod`)
+**Applies to:** Star Plus (`com.starwinmod.winlator`) / Ludashi Plus (`com.winlator.cmod`)
 **Source base:** `extension/steam/` (Star Plus) | `app/src/main/java/com/winlator/cmod/store/` (Ludashi Plus)
 
 ---

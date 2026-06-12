@@ -201,7 +201,7 @@ buildLsfg.dependsOn(downloadProton)
 preBuild.dependsOn(buildLsfg)
 
 android {
-    namespace 'com.winlator.star'
+    namespace 'com.starwinmod.winlator'
     compileSdk 34
     buildToolsVersion "35.0.0"
 
@@ -247,7 +247,7 @@ android {
     productFlavors {
         standard {
             dimension "version"
-            applicationId "com.winlator.star"
+            applicationId "com.starwinmod.winlator"
             resValue "string", "app_name", "star Bionic"
         }
         ludashi {

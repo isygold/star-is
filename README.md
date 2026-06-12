@@ -11,7 +11,7 @@ Windows applications and games on Android.</h1>
 **star** is an application that lets you play PC games on Android with the best performance possible. It lets you access your Steam, Amazon, GOG and Epic Games library on the go.
 
 **Informations:**
-- **Package:** `com.winlator.star` (standard), `com.tencent.ig` (pubg), `com.ludashi.benchmark` (ludashi)
+- **Package:** `com.starwinmod.winlator` (standard), `com.tencent.ig` (pubg), `com.ludashi.benchmark` (ludashi)
 
 - **Version:** `v1.2-REVAMPED` (build identifier `7.1.4x-cmod`, versionCode `20`)
 
