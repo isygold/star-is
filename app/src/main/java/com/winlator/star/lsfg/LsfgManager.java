@@ -16,6 +16,11 @@ import java.io.InputStream;
  * On first container boot that has LSFG enabled, this extracts the
  * layer .so and manifest JSON to the container's Vulkan implicit layer
  * directory so the Vulkan loader can discover it via VK_LAYER_PATH.
+ *
+ * Also supports installing a user-provided lossless.dll (from the
+ * Lossless Scaling app on Steam/PC) which the layer can use for
+ * proprietary frame-generation shaders instead of the open-source
+ * reimplementation.
  */
 public class LsfgManager {
     private static final String TAG = "LsfgManager";
@@ -23,6 +28,28 @@ public class LsfgManager {
     private static final String LAYER_SO_NAME = "libVkLayer_LSFGVK_frame_generation.so";
     private static final String LAYER_MANIFEST_NAME = "VkLayer_LSFGVK_frame_generation.json";
     private static final String LAYER_INSTALL_DIR = "usr/share/vulkan/implicit_layer.d/lsfg";
+
+    /** Name of the custom DLL that users can provide from Lossless Scaling on PC. */
+    public static final String CUSTOM_DLL_NAME = "lossless.dll";
+
+    /** Environment variable the layer reads to locate lossless.dll. */
+    public static final String LSFG_DLL_PATH_ENV = "LSFG_DLL_PATH";
+
+    /**
+     * @param rootDir  The container's root directory (ImageFs root)
+     * @return The layer directory inside the container
+     */
+    public static File getLayerDir(File rootDir) {
+        return new File(rootDir, LAYER_INSTALL_DIR);
+    }
+
+    /**
+     * @param rootDir  The container's root directory
+     * @return The path where lossless.dll would be placed inside the container
+     */
+    public static File getDllPath(File rootDir) {
+        return new File(getLayerDir(rootDir), CUSTOM_DLL_NAME);
+    }
 
     /**
      * Ensure the LSFG layer files are installed in the given root directory.
@@ -33,7 +60,7 @@ public class LsfgManager {
      * @return true if the layer is available after this call
      */
     public static boolean ensureLayerInstalled(Context context, File rootDir) {
-        File layerDir = new File(rootDir, LAYER_INSTALL_DIR);
+        File layerDir = getLayerDir(rootDir);
         File manifestFile = new File(layerDir, LAYER_MANIFEST_NAME);
         File soFile = new File(layerDir, LAYER_SO_NAME);
 
@@ -74,6 +101,38 @@ public class LsfgManager {
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to install LSFG layer: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Install a user-provided lossless.dll into the container's Vulkan layer
+     * directory. The layer will find it via {@link #LSFG_DLL_PATH_ENV}.
+     *
+     * @param rootDir  The container's root directory
+     * @param dllFile  The lossless.dll file from user device storage
+     * @return true if the DLL was successfully installed
+     */
+    public static boolean installCustomDll(File rootDir, File dllFile) {
+        if (dllFile == null || !dllFile.isFile()) {
+            Log.e(TAG, "Custom DLL not found: " + (dllFile != null ? dllFile.getPath() : "null"));
+            return false;
+        }
+
+        File layerDir = getLayerDir(rootDir);
+        if (!layerDir.exists() && !layerDir.mkdirs()) {
+            Log.e(TAG, "Failed to create layer directory for custom DLL: " + layerDir);
+            return false;
+        }
+
+        File dest = getDllPath(rootDir);
+        try {
+            FileUtils.copy(dllFile, dest);
+            FileUtils.chmod(dest, 0644);
+            Log.d(TAG, "Installed custom DLL from " + dllFile.getPath() + " to " + dest);
+            return dest.isFile();
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to install custom DLL: " + e.getMessage());
             return false;
         }
     }

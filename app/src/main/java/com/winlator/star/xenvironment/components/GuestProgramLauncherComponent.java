@@ -381,31 +381,51 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         // LSFG (Lossless Scaling Frame Generation) — if enabled
         {
+            // Resolve effective lsfgEnabled: container config, then shortcut override
             boolean lsfgEnabled = container.isLsfgEnabled();
-            // Ensure the LSFG Vulkan layer files are installed
-            if (lsfgEnabled) {
-                LsfgManager.ensureLayerInstalled(context, rootDir);
-            }
             if (shortcut != null) {
                 String lsfgExtra = shortcut.getExtra("lsfgEnabled", "");
                 if (!lsfgExtra.isEmpty()) lsfgEnabled = lsfgExtra.equals("1");
             }
+
             if (lsfgEnabled) {
-                String lsfgDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d/lsfg";
-                String vkLayerPath = envVars.get("VK_LAYER_PATH");
-                envVars.put("VK_LAYER_PATH", lsfgDir + (vkLayerPath.isEmpty() ? "" : ":" + vkLayerPath));
-                // Also add the parent layer dir so the Vulkan loader finds the manifest
-                String parentLayerDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d";
-                if (!vkLayerPath.contains(parentLayerDir)) {
-                    envVars.put("VK_LAYER_PATH", parentLayerDir + ":" + envVars.get("VK_LAYER_PATH"));
+                boolean layerOk = LsfgManager.ensureLayerInstalled(context, rootDir);
+                if (layerOk) {
+                    String lsfgDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d/lsfg";
+                    String vkLayerPath = envVars.get("VK_LAYER_PATH");
+                    envVars.put("VK_LAYER_PATH", lsfgDir + (vkLayerPath.isEmpty() ? "" : ":" + vkLayerPath));
+                    // Also add the parent layer dir so the Vulkan loader finds the manifest
+                    String parentLayerDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d";
+                    if (!vkLayerPath.contains(parentLayerDir)) {
+                        envVars.put("VK_LAYER_PATH", parentLayerDir + ":" + envVars.get("VK_LAYER_PATH"));
+                    }
+                    String ldLibPath = envVars.get("LD_LIBRARY_PATH");
+                    envVars.put("LD_LIBRARY_PATH", lsfgDir + (ldLibPath.isEmpty() ? "" : ":" + ldLibPath));
+                    envVars.put("LSFG_MULTIPLIER", String.valueOf(container.getLsfgMultiplier()));
+                    envVars.put("LSFG_QUALITY", container.getLsfgQuality());
+                    envVars.put("LSFG_FLOW_SCALE", String.valueOf(container.getLsfgFlowScale()));
+                    envVars.put("LSFG_MAX_LATENCY", String.valueOf(container.getLsfgMaxLatency()));
+                    envVars.put("LSFG_GPU_ARCH", container.getLsfgGpuArch());
+
+                    // Install custom lossless.dll if provided
+                    if (container.isLsfgCustomDllEnabled()) {
+                        String dllPath = container.getLsfgCustomDllPath();
+                        if (dllPath != null && !dllPath.isEmpty()) {
+                            File dllFile = new File(dllPath);
+                            if (LsfgManager.installCustomDll(rootDir, dllFile)) {
+                                String dllContainerPath = LsfgManager.getDllPath(rootDir).getPath();
+                                envVars.put(LsfgManager.LSFG_DLL_PATH_ENV, dllContainerPath);
+                                Log.d(TAG, "Custom lossless.dll installed, " + LsfgManager.LSFG_DLL_PATH_ENV + "=" + dllContainerPath);
+                            } else {
+                                Log.w(TAG, "Failed to install custom lossless.dll from: " + dllPath);
+                            }
+                        } else {
+                            Log.w(TAG, "Custom DLL enabled but no path configured");
+                        }
+                    }
+                } else {
+                    Log.w(TAG, "LSFG layer installation failed — frame generation disabled");
                 }
-                String ldLibPath = envVars.get("LD_LIBRARY_PATH");
-                envVars.put("LD_LIBRARY_PATH", lsfgDir + (ldLibPath.isEmpty() ? "" : ":" + ldLibPath));
-                envVars.put("LSFG_MULTIPLIER", String.valueOf(container.getLsfgMultiplier()));
-                envVars.put("LSFG_QUALITY", container.getLsfgQuality());
-                envVars.put("LSFG_FLOW_SCALE", String.valueOf(container.getLsfgFlowScale()));
-                envVars.put("LSFG_MAX_LATENCY", String.valueOf(container.getLsfgMaxLatency()));
-                envVars.put("LSFG_GPU_ARCH", container.getLsfgGpuArch());
             }
         }
 
