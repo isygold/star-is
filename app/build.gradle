@@ -3,6 +3,38 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.security.MessageDigest
 
+/**
+ * Locate the Android NDK path from the project's local properties
+ * or SDK manager, in that order of precedence.
+ */
+def findNdkPath() {
+    // 1. ndkDir from local.properties (set by AGP)
+    if (project.hasProperty("android.ndkDirectory") && project.android.ndkDirectory != null) {
+        return project.android.ndkDirectory.absolutePath
+    }
+    // 2. ANDROID_NDK_HOME env var
+    def env = System.getenv("ANDROID_NDK_HOME")
+    if (env != null && !env.empty) {
+        return env
+    }
+    // 3. ANDROID_HOME + ndk-bundle
+    def sdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+    if (sdk != null) {
+        def ndkBundle = new File(sdk, "ndk-bundle")
+        if (ndkBundle.isDirectory()) return ndkBundle.absolutePath
+        // 4. Most recent NDK under $ANDROID_HOME/ndk/
+        def ndkDir = new File(sdk, "ndk")
+        if (ndkDir.isDirectory()) {
+            def versions = ndkDir.listFiles().findAll { it.isDirectory() }
+            if (!versions.empty) {
+                versions.sort { it.name }
+                return versions.last().absolutePath
+            }
+        }
+    }
+    return null
+}
+
 buildscript {
     repositories {
         google()
@@ -113,9 +145,60 @@ tasks.register("downloadProton") {
     }
 }
 
+tasks.register("buildLsfg") {
+    def lsfgSo = new File(project.rootDir,
+        "app/src/main/jniLibs/arm64-v8a/libVkLayer_LSFGVK_frame_generation.so")
+
+    // If .so already exists, skip
+    onlyIf { !lsfgSo.exists() }
+
+    doLast {
+        def ndkPath = findNdkPath()
+        if (ndkPath == null) {
+            logger.warn("⚠ LSFG: NDK not found — skipping lsfg-vk build. " +
+                "FrameGen will rely on custom DLL path only.")
+            return
+        }
+
+        def buildScript = new File(project.rootDir, "build-lsfg-android.sh")
+        if (!buildScript.exists()) {
+            logger.warn("⚠ LSFG: build-lsfg-android.sh not found — skipping")
+            return
+        }
+
+        // Make sure the script is executable
+        buildScript.setExecutable(true, false)
+
+        logger.lifecycle("🔧 LSFG: Building Vulkan layer via build-lsfg-android.sh...")
+
+        def proc = new ProcessBuilder(
+            "bash", buildScript.absolutePath,
+            "--ndk", ndkPath,
+            "--skip-if-exists"
+        )
+            .directory(project.rootDir)
+            .redirectErrorStream(true)
+            .start()
+
+        // Stream output to gradle log
+        proc.inputStream.eachLine { line ->
+            logger.lifecycle("  [lsfg-build] ${line}")
+        }
+
+        int exitCode = proc.waitFor()
+        if (exitCode != 0) {
+            logger.warn("⚠ LSFG: build-lsfg-android.sh exited with code ${exitCode}. " +
+                "FrameGen will rely on custom DLL path only.")
+        } else {
+            logger.lifecycle("✅ LSFG: Vulkan layer built successfully")
+        }
+    }
+}
+
 tasks.register("prepareKotlinBuildScriptModel"){}
 downloadProton.dependsOn(downloadImageFS)
-preBuild.dependsOn(downloadProton)
+buildLsfg.dependsOn(downloadProton)
+preBuild.dependsOn(buildLsfg)
 
 android {
     namespace 'com.winlator.star'
