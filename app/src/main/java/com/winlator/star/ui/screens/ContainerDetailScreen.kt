@@ -370,6 +370,85 @@ private fun TopLevelFields(
         }
         Spacer(Modifier.height(8.dp))
 
+        // ── Custom lossless.dll (requires owning Lossless Scaling on Steam) ──
+        val dllPickerLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            val uri = result.data?.data
+            if (uri != null) {
+                val path = FileUtils.getFilePathFromUri(context, uri)
+                if (path != null && path.endsWith(".dll", ignoreCase = true)) {
+                    viewModel.lsfgCustomDllPath = path
+                    viewModel.lsfgCustomDllEnabled = true
+                }
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(
+                checked = viewModel.lsfgCustomDllEnabled,
+                onCheckedChange = { enabled ->
+                    viewModel.lsfgCustomDllEnabled = enabled
+                    if (!enabled) viewModel.lsfgCustomDllPath = ""
+                }
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.lsfg_custom_dll), modifier = Modifier.weight(1f))
+        }
+
+        if (viewModel.lsfgCustomDllEnabled) {
+            Spacer(Modifier.height(4.dp))
+            // Selected path display + browse/clear buttons
+            Surface(
+                tonalElevation = 2.dp,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    if (viewModel.lsfgCustomDllPath.isNotEmpty()) {
+                        Text(
+                            text = viewModel.lsfgCustomDllPath,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.lsfgCustomDllPath = ""
+                                viewModel.lsfgCustomDllEnabled = false
+                            }
+                        ) {
+                            Text(stringResource(R.string.lsfg_custom_dll_clear))
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(R.string.lsfg_custom_dll_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                    addCategory(Intent.CATEGORY_OPENABLE)
+                                    type = "*/*"
+                                }
+                                dllPickerLauncher.launch(intent)
+                            }
+                        ) {
+                            Text(stringResource(R.string.lsfg_custom_dll_browse))
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
         // Audio Driver
         LabeledDropdown(
             label = stringResource(R.string.audio_driver),

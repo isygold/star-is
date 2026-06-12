@@ -100,6 +100,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
     var lsfgMaxLatency by mutableStateOf(Container.DEFAULT_LSFG_MAX_LATENCY)
     var lsfgGpuArchEntries by mutableStateOf(emptyList<String>()); private set
     var selectedLsfgGpuArch by mutableStateOf(Container.DEFAULT_LSFG_GPU_ARCH)
+    var lsfgCustomDllEnabled by mutableStateOf(Container.DEFAULT_LSFG_CUSTOM_DLL_ENABLED)
+    var lsfgCustomDllPath by mutableStateOf(Container.DEFAULT_LSFG_CUSTOM_DLL_PATH)
 
     var lcAll by mutableStateOf("")
     var lcAllEntries by mutableStateOf(emptyList<String>()); private set
@@ -311,6 +313,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
         lsfgFlowScale    = c?.lsfgFlowScale ?: lsfgDefaults?.flowScale ?: Container.DEFAULT_LSFG_FLOW_SCALE
         lsfgMaxLatency   = c?.lsfgMaxLatency ?: lsfgDefaults?.maxLatency ?: Container.DEFAULT_LSFG_MAX_LATENCY
         selectedLsfgGpuArch = c?.lsfgGpuArch ?: lsfgDefaults?.gpuArch ?: Container.DEFAULT_LSFG_GPU_ARCH
+        lsfgCustomDllEnabled = c?.isLsfgCustomDllEnabled ?: Container.DEFAULT_LSFG_CUSTOM_DLL_ENABLED
+        lsfgCustomDllPath    = c?.lsfgCustomDllPath ?: Container.DEFAULT_LSFG_CUSTOM_DLL_PATH
 
         val locale = java.util.Locale.getDefault()
         lcAll = c?.getLC_ALL() ?: "${locale.language}_${locale.country}.UTF-8"
@@ -575,6 +579,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
             c.setLsfgFlowScale(lsfgFlowScale)
             c.setLsfgMaxLatency(lsfgMaxLatency)
             c.setLsfgGpuArch(selectedLsfgGpuArch)
+            c.setLsfgCustomDllEnabled(lsfgCustomDllEnabled)
+            c.setLsfgCustomDllPath(lsfgCustomDllPath)
             c.setInputType(inputType)
             c.setStartupSelection(selectedStartupSelection.toByte())
             c.setBox64Version(selectedBox64Version)
@@ -615,6 +621,8 @@ class ContainerDetailViewModel(app: Application) : AndroidViewModel(app) {
                 put("lsfgFlowScale", lsfgFlowScale)
                 put("lsfgMaxLatency", lsfgMaxLatency)
                 put("lsfgGpuArch", selectedLsfgGpuArch)
+                put("lsfgCustomDllEnabled", lsfgCustomDllEnabled)
+                put("lsfgCustomDllPath", lsfgCustomDllPath)
                 put("inputType", inputType)
                 put("startupSelection", selectedStartupSelection)
                 put("box64Version", selectedBox64Version)
