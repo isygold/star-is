@@ -173,11 +173,8 @@ public class ContentsManager {
 
         File file = getTmpDir(context);
 
-        boolean ret;
-        ret = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, file);
-        if (!ret)
-            ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file);
-        if (!ret) {
+        // Auto-detect compression format by magic bytes; falls back to all known formats
+        if (!TarCompressorUtils.extractAuto(context, uri, file)) {
             callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
             return;
         }

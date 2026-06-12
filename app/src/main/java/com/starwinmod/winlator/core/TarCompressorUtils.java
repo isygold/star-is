@@ -10,6 +10,10 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.archivers.tar.TarConstants;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
@@ -17,6 +21,7 @@ import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStr
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -24,9 +29,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PushbackInputStream;
 
 public abstract class TarCompressorUtils {
-    public enum Type {XZ, ZSTD}
+    public enum Type {XZ, ZSTD, GZIP, BZIP2}
+
+    /** Magic bytes for known compression formats. */
+    private static final byte[] MAGIC_XZ   = { (byte)0xFD, '7', 'z', 'X', 'Z', 0x00 };
+    private static final byte[] MAGIC_ZSTD = { (byte)0x28, (byte)0xB5, (byte)0x2F, (byte)0xFD };
+    private static final byte[] MAGIC_GZIP = { (byte)0x1F, (byte)0x8B, 0x08 };
+    private static final byte[] MAGIC_BZIP2= { (byte)0x42, (byte)0x5A, (byte)0x68 };
 
     // Interface to define the exclusion filter
     public interface ExclusionFilter {
@@ -107,6 +119,168 @@ public abstract class TarCompressorUtils {
         }
     }
 
+
+    /**
+     * Detects compression format by reading magic bytes from a PushbackInputStream.
+     * The stream must support mark() at len >= 6.
+     * Returns null if no format matched.
+     */
+    public static Type detectFormat(PushbackInputStream in) throws IOException {
+        byte[] header = new byte[6];
+        int bytesRead = in.read(header);
+        if (bytesRead <= 0) return null;
+        if (bytesRead < 6) {
+            // Pad with zeros so comparison still works
+            byte[] padded = new byte[6];
+            System.arraycopy(header, 0, padded, 0, bytesRead);
+            header = padded;
+        }
+        // Unread so the stream is intact for the decompressor
+        in.unread(header, 0, bytesRead);
+
+        if (startsWith(header, MAGIC_XZ))   return Type.XZ;
+        if (startsWith(header, MAGIC_ZSTD)) return Type.ZSTD;
+        if (startsWith(header, MAGIC_GZIP)) return Type.GZIP;
+        if (startsWith(header, MAGIC_BZIP2))return Type.BZIP2;
+        return null;
+    }
+
+    /**
+     * Detects compression format of a File by reading its first bytes.
+     * Returns null if the file doesn't exist or format is unknown.
+     */
+    public static Type detectFormat(File source) {
+        if (source == null || !source.isFile()) return null;
+        try (PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE), 6)) {
+            return detectFormat(in);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Detects compression format from a Uri by reading the first bytes of the content stream.
+     * Returns null if the format is unknown or stream can't be read.
+     */
+    public static Type detectFormat(Context context, Uri source) {
+        if (source == null) return null;
+        try {
+            InputStream rawIn;
+            if (source.toString().startsWith("/")) {
+                rawIn = new FileInputStream(source.toString());
+            } else {
+                rawIn = context.getContentResolver().openInputStream(source);
+            }
+            if (rawIn == null) return null;
+            try (PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(rawIn, StreamUtils.BUFFER_SIZE), 6)) {
+                return detectFormat(in);
+            }
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts content from a Uri by auto-detecting the compression format.
+     * Tries all known formats as fallback if detection fails or the detected
+     * decompressor fails.
+     */
+    public static boolean extractAuto(Context context, Uri source, File destination) {
+        return extractAuto(context, source, destination, null);
+    }
+
+    /**
+     * Extracts content from a Uri by auto-detecting the compression format.
+     * Tries all known formats as fallback if detection fails or the detected
+     * decompressor fails.
+     */
+    public static boolean extractAuto(Context context, Uri source, File destination, OnExtractFileListener listener) {
+        if (source == null) return false;
+        // First try auto-detection via magic-bytes sniffing
+        try {
+            InputStream rawIn;
+            if (source.toString().startsWith("/")) {
+                rawIn = new FileInputStream(source.toString());
+            } else {
+                rawIn = context.getContentResolver().openInputStream(source);
+            }
+            if (rawIn == null) return extractFallback(context, source, destination, listener);
+
+            PushbackInputStream pushIn = new PushbackInputStream(
+                    new BufferedInputStream(rawIn, StreamUtils.BUFFER_SIZE), 6);
+            Type detected;
+            try {
+                detected = detectFormat(pushIn);
+            } catch (IOException e) {
+                closeQuietly(pushIn);
+                return extractFallback(context, source, destination, listener);
+            }
+
+            if (detected != null) {
+                // pushIn already has the magic bytes unread, ready for decompressor
+                if (extract(detected, pushIn, destination, listener)) {
+                    return true;
+                }
+            }
+            closeQuietly(pushIn);
+        } catch (IOException e) {
+            // stream open failed — fall through to fallback
+        }
+        // Auto-detection failed or detected format failed — try every format
+        return extractFallback(context, source, destination, listener);
+    }
+
+    /**
+     * Extracts content from a File by auto-detecting the compression format.
+     * Tries all known formats as fallback if detection fails.
+     */
+    public static boolean extractAuto(File source, File destination) {
+        return extractAuto(source, destination, null);
+    }
+
+    /**
+     * Extracts content from a File by auto-detecting the compression format.
+     * Tries all known formats as fallback if detection fails.
+     */
+    public static boolean extractAuto(File source, File destination, OnExtractFileListener listener) {
+        if (source == null || !source.isFile()) return false;
+        Type detected = detectFormat(source);
+        if (detected != null) {
+            if (extract(detected, source, destination, listener)) return true;
+        }
+        // Detection failed or detected format failed — try all
+        return extractFallback(source, destination, listener);
+    }
+
+    // ----- fallback helpers -----
+
+    private static boolean extractFallback(Context context, Uri source, File destination, OnExtractFileListener listener) {
+        for (Type type : Type.values()) {
+            if (extract(type, context, source, destination, listener)) return true;
+        }
+        return false;
+    }
+
+    private static boolean extractFallback(File source, File destination, OnExtractFileListener listener) {
+        for (Type type : Type.values()) {
+            if (extract(type, source, destination, listener)) return true;
+        }
+        return false;
+    }
+
+    private static boolean startsWith(byte[] data, byte[] prefix) {
+        if (data.length < prefix.length) return false;
+        for (int i = 0; i < prefix.length; i++) {
+            if (data[i] != prefix[i]) return false;
+        }
+        return true;
+    }
+
+    private static void closeQuietly(Closeable c) {
+        if (c != null) {
+            try { c.close(); } catch (IOException ignored) {}
+        }
+    }
 
     public static boolean extract(Type type, Context context, String assetFile, File destination) {
         return extract(type, context, assetFile, destination, null);
@@ -198,6 +372,12 @@ public abstract class TarCompressorUtils {
         else if (type == Type.ZSTD) {
             return new ZstdCompressorInputStream(source);
         }
+        else if (type == Type.GZIP) {
+            return new GzipCompressorInputStream(source);
+        }
+        else if (type == Type.BZIP2) {
+            return new BZip2CompressorInputStream(source);
+        }
         return null;
     }
 
@@ -207,6 +387,12 @@ public abstract class TarCompressorUtils {
         }
         else if (type == Type.ZSTD) {
             return new ZstdCompressorOutputStream(new BufferedOutputStream(new FileOutputStream(destination), StreamUtils.BUFFER_SIZE), level);
+        }
+        else if (type == Type.GZIP) {
+            return new GzipCompressorOutputStream(new BufferedOutputStream(new FileOutputStream(destination), StreamUtils.BUFFER_SIZE));
+        }
+        else if (type == Type.BZIP2) {
+            return new BZip2CompressorOutputStream(new BufferedOutputStream(new FileOutputStream(destination), StreamUtils.BUFFER_SIZE));
         }
         return null;
     }
