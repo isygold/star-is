@@ -47,6 +47,8 @@ public class Container {
     public static final int DEFAULT_LSFG_FLOW_SCALE = 100;
     public static final int DEFAULT_LSFG_MAX_LATENCY = 16;
     public static final String DEFAULT_LSFG_GPU_ARCH = "auto";
+    public static final boolean DEFAULT_LSFG_CUSTOM_DLL_ENABLED = false;
+    public static final String DEFAULT_LSFG_CUSTOM_DLL_PATH = "";
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
@@ -89,6 +91,8 @@ public class Container {
     private int lsfgFlowScale = DEFAULT_LSFG_FLOW_SCALE;
     private int lsfgMaxLatency = DEFAULT_LSFG_MAX_LATENCY;
     private String lsfgGpuArch = DEFAULT_LSFG_GPU_ARCH;
+    private boolean lsfgCustomDllEnabled = DEFAULT_LSFG_CUSTOM_DLL_ENABLED;
+    private String lsfgCustomDllPath = DEFAULT_LSFG_CUSTOM_DLL_PATH;
     private ContainerManager containerManager;
 
 
@@ -437,6 +441,11 @@ public Container(int id) {
     public String getLsfgGpuArch() { return lsfgGpuArch; }
     public void setLsfgGpuArch(String lsfgGpuArch) { this.lsfgGpuArch = lsfgGpuArch; }
 
+    public boolean isLsfgCustomDllEnabled() { return lsfgCustomDllEnabled; }
+    public void setLsfgCustomDllEnabled(boolean enabled) { this.lsfgCustomDllEnabled = enabled; }
+    public String getLsfgCustomDllPath() { return lsfgCustomDllPath; }
+    public void setLsfgCustomDllPath(String path) { this.lsfgCustomDllPath = path != null ? path : ""; }
+
     public Iterable<String[]> drivesIterator() {
         return drivesIterator(drives);
     }
@@ -500,6 +509,8 @@ public Container(int id) {
             data.put("lsfgFlowScale", lsfgFlowScale);
             data.put("lsfgMaxLatency", lsfgMaxLatency);
             data.put("lsfgGpuArch", lsfgGpuArch);
+            data.put("lsfgCustomDllEnabled", lsfgCustomDllEnabled);
+            data.put("lsfgCustomDllPath", lsfgCustomDllPath);
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -625,6 +636,12 @@ public Container(int id) {
                     break;
                 case "lsfgGpuArch" :
                     setLsfgGpuArch(data.getString(key));
+                    break;
+                case "lsfgCustomDllEnabled" :
+                    setLsfgCustomDllEnabled(data.getBoolean(key));
+                    break;
+                case "lsfgCustomDllPath" :
+                    setLsfgCustomDllPath(data.getString(key));
                     break;
             }
         }
