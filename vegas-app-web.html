@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Star Emulator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,sans-serif;background:#0D0015;color:#E8E8E8;display:flex;justify-content:center;align-items:center;padding:20px}
+:root{--primary:#D946EF;--primary-dim:#701A75;--secondary:#22D3EE;--tertiary:#FBBF24;--glow:#C084FC;--surface:#1A0A2E;--surface-variant:#2A1540;--bg:#0D0015;--on-surface:#E8E8E8;--on-surface-variant:#AAAAAA;--divider:#3A1A5E;--outline:#5A2A7E;--error:#EF5350;--safe-bottom:env(safe-area-inset-bottom,0px)}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:40px;border:2px solid var(--divider);overflow:hidden;position:relative;box-shadow:0 0 80px rgba(217,70,239,0.1),0 20px 60px rgba(0,0,0,0.6);display:flex;flex-direction:column}
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 24px 6px;font-size:11px;font-weight:600;color:var(--on-surface-variant);background:var(--bg);z-index:10;flex-shrink:0}
+.screen-area{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+.page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:0 0 80px;opacity:0;pointer-events:none;transition:opacity .3s ease,transform .3s ease;transform:translateY(8px);-webkit-overflow-scrolling:touch}
+.page.active{opacity:1;pointer-events:auto;transform:translateY(0)}
+.page::-webkit-scrollbar{width:3px}
+.page::-webkit-scrollbar-track{background:transparent}
+.page::-webkit-scrollbar-thumb{background:var(--divider);border-radius:2px}
+.topbar{display:flex;align-items:center;gap:4px;padding:8px 4px 10px;background:var(--surface);position:sticky;top:0;z-index:5;flex-shrink:0}
+.topbar .menu-btn{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--on-surface);background:transparent;border:none;font-size:20px;transition:background .15s}
+.topbar .menu-btn:hover{background:rgba(255,255,255,.05)}
+.topbar .title{flex:1;font-size:16px;font-weight:600;color:var(--on-surface);padding-left:4px}
+.topbar .actions{display:flex;gap:2px}
+.topbar .action-btn{width:36px;height:36px;border-radius:8px;border:none;background:transparent;color:var(--on-surface-variant);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.topbar .action-btn:hover{background:rgba(255,255,255,.05)}
+.topbar-border{height:1px;background:linear-gradient(90deg,var(--primary),var(--secondary));flex-shrink:0}
+.bottom-nav{display:flex;background:var(--surface);border-top:1px solid var(--divider);flex-shrink:0;padding:4px 0 calc(4px + var(--safe-bottom))}
+.nav-item{flex:1;text-align:center;padding:6px 0;font-size:9px;color:var(--on-surface-variant);cursor:pointer;transition:color .15s}
+.nav-item .nav-icon{font-size:18px;margin-bottom:2px}
+.nav-item.active{color:var(--primary)}
+.nav-item.active .nav-icon{filter:brightness(1.2)}
+.scroll-content{padding:12px 16px}
+.section-header{font-size:13px;font-weight:700;color:var(--primary);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-header .glow{flex:1;height:1px;background:linear-gradient(90deg,var(--primary),transparent)}
+.card{background:var(--surface);border-radius:14px;border:1px solid var(--divider);padding:14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .2s,transform .15s}
+.card:hover{box-shadow:0 4px 16px rgba(217,70,239,.08);transform:translateY(-1px)}
+.container-card{background:var(--surface);border-radius:14px;border:1px solid var(--divider);padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:10px;position:relative;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .15s}
+.container-card:hover{box-shadow:0 4px 16px rgba(217,70,239,.08);transform:translateY(-1px)}
+.container-card .accent-bar{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:0 2px 2px 0}
+.container-card .accent-bar.magenta{background:var(--primary)}
+.container-card .accent-bar.gray{background:var(--on-surface-variant)}
+.container-card .c-icon{width:40px;height:40px;border-radius:10px;background:var(--surface-variant);display:flex;align-items:center;justify-content:center;font-size:18px;margin-left:4px;flex-shrink:0}
+.container-card .c-info{flex:1}
+.container-card .c-name{font-size:14px;font-weight:600;color:var(--on-surface)}
+.container-card .c-meta{font-size:11px;color:var(--on-surface-variant);margin-top:2px}
+.container-card .c-badges{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.badge{padding:2px 8px;border-radius:4px;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;display:inline-block}
+.badge-primary{background:rgba(217,70,239,.15);color:var(--primary)}
+.badge-tertiary{background:rgba(251,191,36,.15);color:var(--tertiary)}
+.badge-surface{background:rgba(255,255,255,.06);color:var(--on-surface-variant)}
+.input-group{display:flex;align-items:center;gap:8px;background:var(--surface-variant);border-radius:10px;padding:8px 12px;margin:8px 0 14px}
+.input-group input{background:transparent;border:none;color:var(--on-surface);font-size:13px;outline:none;width:100%}
+.input-group input::placeholder{color:var(--on-surface-variant);opacity:.6}
+.shortcut-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sc{background:var(--surface);border-radius:10px;border:1px solid var(--divider);padding:14px 8px;text-align:center;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s}
+.sc:hover{transform:translateY(-2px)}
+.sc .s-badge{position:absolute;top:0;right:0;background:linear-gradient(135deg,var(--primary),var(--secondary));padding:2px 6px 2px 8px;border-radius:0 10px 0 6px;font-size:7px;font-weight:800;letter-spacing:.5px;color:#0D0015}
+.sc .s-icon{width:36px;height:36px;border-radius:8px;background:var(--surface-variant);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.sc .s-name{font-size:10px;color:var(--on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:8px 16px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s;text-decoration:none}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--primary);color:#0D0015}
+.btn-ghost{background:transparent;color:var(--primary);border:1px solid var(--divider)!important}
+.btn-danger{background:transparent;color:var(--error);border:1px solid rgba(239,83,80,.3)!important}
+.btn-sm{padding:4px 10px;font-size:10px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:var(--on-surface-variant);margin-bottom:4px;font-weight:500}
+.field .value{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--divider);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--on-surface);cursor:pointer}
+.field .value .arrow{color:var(--on-surface-variant);font-size:16px}
+.field .value.highlight{color:var(--primary);font-weight:600}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--divider)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-row label{font-size:13px;color:var(--on-surface)}
+.toggle-row .desc{font-size:11px;color:var(--on-surface-variant);margin-top:1px}
+.toggle{width:40px;height:22px;border-radius:11px;background:var(--divider);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--primary)}
+.toggle::after{content:'';width:18px;height:18px;border-radius:50%;background:white;position:absolute;top:2px;left:2px;transition:transform .2s}
+.toggle.on::after{transform:translateX(18px)}
+.tab-bar{display:flex;border-bottom:1px solid var(--divider);margin-bottom:16px;overflow-x:auto}
+.tab-bar::-webkit-scrollbar{height:2px}
+.tab-bar::-webkit-scrollbar-thumb{background:var(--divider)}
+.tab{padding:10px 14px;font-size:12px;color:var(--on-surface-variant);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.tab:hover{color:var(--on-surface)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.drawer-overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:20;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.drawer-overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:absolute;top:0;left:0;bottom:0;width:280px;background:var(--surface);z-index:25;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;border-right:1px solid var(--divider)}
+.drawer.open{transform:translateX(0)}
+.drawer-header{text-align:center;padding:28px 20px 16px;border-bottom:1px solid var(--divider);flex-shrink:0}
+.drawer-header .brand{font-size:15px;font-weight:700;color:var(--primary);letter-spacing:2px}
+.drawer-header .sub{font-size:9px;font-weight:800;letter-spacing:2px;margin-top:4px;background:linear-gradient(90deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.drawer-header .glow-line{height:1px;margin-top:8px;background:linear-gradient(90deg,var(--primary),transparent)}
+.drawer-body{flex:1;overflow-y:auto;padding:8px 12px}
+.drawer-section{font-size:10px;color:var(--primary);letter-spacing:1.5px;padding:12px 8px 4px;font-weight:600;text-transform:uppercase}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:8px;font-size:13px;color:var(--on-surface-variant);cursor:pointer;position:relative;transition:background .15s}
+.drawer-item:hover{background:rgba(217,70,239,.06)}
+.drawer-item.active{color:var(--primary);font-weight:600;background:rgba(217,70,239,.08)}
+.drawer-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:linear-gradient(180deg,var(--primary),var(--secondary))}
+.drawer-item .icon{width:20px;text-align:center;font-size:16px;opacity:.7}
+.drawer-item.active .icon{opacity:1}
+.preset-row{display:flex;gap:10px;margin-bottom:10px}
+.preset-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.preset-box{width:100%;aspect-ratio:1;border-radius:10px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid var(--divider)}
+.preset-box.selected{border-color:var(--primary);border-width:2px}
+.preset-box .v-badge{position:absolute;top:0;right:0;background:var(--primary);color:#0D0015;font-size:7px;font-weight:900;padding:2px 5px 2px 6px;border-radius:0 8px 0 4px}
+.preset-box .check{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:16px;color:white;border-radius:8px}
+.preset-ui{padding:4px;width:100%;display:flex;flex-direction:column;gap:2px}
+.preset-ui .bar{border-radius:2px}
+.preset-ui .bar-fill{height:7px}
+.preset-ui .bar-accent{width:55%;height:3px}
+.preset-ui .bar-sub{width:100%;height:2px}
+.preset-label{font-size:9px;text-align:center;color:var(--on-surface-variant)}
+.preset-label.selected{color:var(--primary);font-weight:700}
+.modal-overlay{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--surface);border-radius:20px;border:1px solid var(--divider);width:90%;max-height:80%;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.modal-strip{height:6px;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:20px 20px 0 0;flex-shrink:0}
+.modal-body{padding:20px}
+.modal-centered{text-align:center}
+.dl-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--divider)}
+.dl-item:last-child{border-bottom:none}
+.dl-item .dl-icon{width:28px;text-align:center;font-size:18px;flex-shrink:0}
+.dl-item .dl-info{flex:1}
+.dl-item .dl-title{font-size:13px;font-weight:600;color:var(--on-surface)}
+.dl-item .dl-sub{font-size:11px;color:var(--on-surface-variant);margin-top:1px}
+.release{background:var(--surface);border-radius:12px;border:1px solid var(--divider);padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.release .ri{flex:1}
+.release .rn{font-size:14px;font-weight:600;color:var(--on-surface)}
+.release .rm{display:flex;gap:6px;align-items:center;margin-top:4px;font-size:11px;color:var(--on-surface-variant)}
+.release .rm .rt{color:var(--glow)}
+.release .rb{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.rel-badge{padding:1px 6px;border-radius:3px;font-size:7px;font-weight:800;letter-spacing:.5px}
+.rel-badge.latest{background:rgba(251,191,36,.15);color:var(--tertiary)}
+.rel-badge.rec{background:rgba(34,211,238,.15);color:var(--secondary)}
+.rel-badge.inst{background:rgba(217,70,239,.12);color:var(--primary)}
+.spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--tertiary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hud-stat{display:flex;justify-content:space-between;align-items:center}
+.perf-bar{height:4px;background:var(--divider);border-radius:2px;overflow:hidden}
+.perf-fill{height:100%;background:linear-gradient(90deg,var(--secondary),var(--primary));border-radius:2px}
+.about-logo{width:64px;height:56px;margin:0 auto 12px}
+.about-logo svg{width:100%;height:100%}
+.about-title{font-size:18px;font-weight:700;letter-spacing:3px;color:var(--primary)}
+.about-badge{display:inline-block;background:var(--primary);color:#0D0015;font-size:9px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:4px;margin-top:8px}
+.about-version{font-size:13px;color:var(--on-surface-variant);margin-top:4px}
+.about-divider{height:1px;background:var(--divider);margin:12px 0}
+.about-st{font-size:12px;font-weight:600;color:var(--primary);letter-spacing:1px;margin-bottom:6px;text-align:left}
+.about-row{display:flex;justify-content:space-between;padding:3px 0;font-size:13px;text-align:left}
+.about-row .nm{font-weight:500;color:var(--on-surface)}
+.about-row .ds{font-size:12px;color:var(--on-surface-variant)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--on-surface-variant)}
+.empty-state .big-icon{font-size:48px;margin-bottom:12px;opacity:.3}
+.toast-container{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);z-index:40;pointer-events:none}
+.toast{background:var(--surface);border:1px solid var(--divider);border-radius:10px;padding:10px 20px;font-size:13px;color:var(--on-surface);opacity:0;transition:opacity .3s;white-space:nowrap}
+.toast.show{opacity:1}
+.splash-v{animation:breathe 3s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.sparkle{position:absolute;width:4px;height:4px;border-radius:50%;pointer-events:none;animation:sparkleFloat 2.5s ease-in-out infinite}
+@keyframes sparkleFloat{0%,100%{opacity:0;transform:translateY(0) scale(.5)}50%{opacity:1;transform:translateY(-20px) scale(1.2)}}
+.vegas-glow-box{border:2px solid transparent;background-clip:padding-box;position:relative}
+.vegas-glow-box::before{content:'';position:absolute;inset:-2px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--secondary));z-index:-1}
+.glow-line{height:1px;margin:0 14px 8px;background:linear-gradient(90deg,rgba(217,70,239,.3),rgba(192,132,252,.3),transparent)}
+.backdrop-blur{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+@media(max-width:420px){.phone{width:100%;height:100vh;border-radius:0;border:none;box-shadow:none}body{padding:0}}
+</style>
+</head>
+<body>
+
+<div class="phone" id="app">
+  <div class="status-bar"><span>9:41</span><span>📶 🔋 94%</span></div>
+  <div class="screen-area" id="screenArea">
+
+    <!-- ══════ SPLASH ══════ -->
+    <div class="page active" id="pageSplash" style="padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0A0012">
+      <div style="position:absolute;inset:0;pointer-events:none">
+        <div style="position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(217,70,239,.12),transparent 70%);top:50%;left:50%;transform:translate(-50%,-65%)"></div>
+        <div class="sparkle" style="top:22%;left:30%;background:var(--primary);animation-delay:0s"></div>
+        <div class="sparkle" style="top:38%;left:72%;background:var(--secondary);animation-delay:.4s"></div>
+        <div class="sparkle" style="top:55%;left:25%;background:var(--tertiary);animation-delay:.8s"></div>
+        <div class="sparkle" style="top:60%;left:75%;background:var(--glow);animation-delay:1.2s"></div>
+        <div class="sparkle" style="top:42%;left:50%;background:var(--primary);animation-delay:1.6s"></div>
+      </div>
+      <div class="splash-v">
+        <svg viewBox="0 0 100 90" width="80" height="72">
+          <defs><linearGradient id="vgS" x1="0" y1="0" x2="100" y2="90"><stop offset="0%" stop-color="#D946EF"/><stop offset="50%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#22D3EE"/></linearGradient></defs>
+          <path d="M15 12 L50 78 L85 12" stroke="url(#vgS)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="50" cy="78" r="6" fill="#22D3EE"/>
+        </svg>
+      </div>
+      <div style="font-size:28px;font-weight:900;letter-spacing:6px;margin-top:8px;background:linear-gradient(135deg,var(--primary),#7C3AED,var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent">VEGAS</div>
+      <div style="font-size:12px;font-weight:500;letter-spacing:3px;color:var(--glow);margin-top:4px">STAR EMULATOR</div>
+      <div style="font-size:11px;color:#AAA;margin-top:24px;font-weight:300" id="splashStatus">Initializing VEGAS engine<span id="splashDots">...</span></div>
+      <div style="width:75%;height:5px;border-radius:3px;background:rgba(255,255,255,.06);margin-top:12px;overflow:hidden">
+        <div id="splashProgress" style="height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,var(--primary),var(--primary-dim),var(--secondary));transition:width .3s"></div>
+      </div>
+      <button id="splashEnter" style="margin-top:20px;background:transparent;border:none;color:var(--secondary);font-size:13px;font-weight:600;letter-spacing:2px;cursor:pointer;padding:10px 48px;text-transform:uppercase;opacity:0;transition:opacity .5s">ENTER</button>
+      <div style="position:absolute;bottom:32px;font-size:9px;color:var(--glow);opacity:.4;letter-spacing:2px">POWERED BY VEGAS</div>
+    </div>
+
+    <!-- ══════ SHORTCUTS ══════ -->
+    <div class="page" id="pageShortcuts">
+      <div class="topbar"><button class="menu-btn" onclick="toggleDrawer()">☰</button><span class="title">Shortcuts</span><div class="actions"><button class="action-btn" onclick="showToast('Search shortcuts')">🔍</button></div></div>
+      <div class="topbar-border"></div>
+      <div class="scroll-content">
+        <div class="input-group"><span style="color:var(--on-surface-variant)">🔍</span><input type="text" placeholder="Search games..." readonly onclick="showToast('Search games')"></div>
+        <div class="section-header">RECENTLY PLAYED<div class="glow"></div></div>
+        <div class="shortcut-grid">
+          <div class="sc" onclick="showToast('Launching Cyberpunk 2077...')"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--glow)">🎮</div><div class="s-name">Cyberpunk 2077</div></div>
+          <div class="sc" onclick="showToast('Launching Starfield...')"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--primary)">⭐</div><div class="s-name">Starfield</div></div>
+          <div class="sc" onclick="showToast('Launching Forza Horizon 5...')"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--secondary)">🏎️</div><div class="s-name">Forza Horizon 5</div></div>
+          <div class="sc" onclick="showToast('Launching Steam...')"><div class="s-icon" style="color:var(--on-surface-variant)">📖</div><div class="s-name">Steam</div></div>
+          <div class="sc" onclick="showToast('Launching Epic Games...')"><div class="s-icon" style="color:var(--on-surface-variant)">🎲</div><div class="s-name">Epic Games</div></div>
+          <div class="sc" onclick="showToast('Launching GOG Galaxy...')"><div class="s-icon" style="color:var(--on-surface-variant)">🕹️</div><div class="s-name">GOG Galaxy</div></div>
+          <div class="sc" onclick="showToast('Launching Skyrim SE...')"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--glow)">🗡️</div><div class="s-name">Skyrim SE</div></div>
+          <div class="sc" onclick="showToast('Launching Red Dead 2...')"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--tertiary)">🤠</div><div class="s-name">Red Dead 2</div></div>
+          <div class="sc" onclick="showToast('Launching GTA V...')"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--secondary)">🚗</div><div class="s-name">Grand Theft Auto V</div></div>
+        </div>
+        <div class="section-header" style="margin-top:16px">ALL APPS & GAMES<div class="glow"></div></div>
+        <p style="font-size:11px;color:var(--on-surface-variant);margin-bottom:8px">9 shortcuts · 3 more available</p>
+        <div class="card" onclick="showToast('Browse all shortcuts')" style="text-align:center">
+          <span style="font-size:12px;color:var(--primary)">➕ Add New Shortcut</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ CONTAINERS ══════ -->
+    <div class="page" id="pageContainers">
+      <div class="topbar"><button class="menu-btn" onclick="toggleDrawer()">☰</button><span class="title">Containers</span><div class="actions"><button class="action-btn" onclick="showToast('Search containers')">🔍</button><button class="action-btn" onclick="showToast('Create new container')">➕</button></div></div>
+      <div class="topbar-border"></div>
+      <div class="scroll-content">
+        <div class="input-group"><span style="color:var(--on-surface-variant)">🔍</span><input type="text" placeholder="Search containers..." readonly onclick="showToast('Search')"></div>
+        <div class="section-header">YOUR CONTAINERS<div class="glow"></div></div>
+        <div class="container-card" onclick="openContainerDetail('main')"><div class="accent-bar magenta"></div><div class="c-icon" style="color:var(--primary)">🎮</div><div class="c-info"><div class="c-name">Main Game Container</div><div class="c-meta">Wine 9.0 · 4.2 GB · Last used 2h ago</div><div class="c-badges"><span class="badge badge-primary">VEGAS 2.7.3</span><span class="badge badge-tertiary">Box64 0.2.8</span></div></div></div>
+        <div class="container-card" onclick="showToast('Opening Legacy Winlator...')"><div class="accent-bar gray"></div><div class="c-icon" style="color:var(--on-surface-variant)">📦</div><div class="c-info"><div class="c-name">Legacy Winlator</div><div class="c-meta">Wine 8.0 · 3.1 GB · Last used 5d ago</div><div class="c-badges"><span class="badge badge-surface">DXVK 2.2</span><span class="badge badge-tertiary">Box64 0.2.6</span></div></div></div>
+        <div class="container-card" onclick="showToast('Opening New VEGAS Build...')"><div class="accent-bar magenta"></div><div class="c-icon" style="color:var(--primary)">🆕</div><div class="c-info"><div class="c-name">New VEGAS Build</div><div class="c-meta">Wine 9.0 · 0 B · Just created</div><div class="c-badges"><span class="badge badge-primary">VEGAS 2.8.0</span></div></div></div>
+        <div class="container-card" onclick="showToast('Opening Proton Test...')"><div class="accent-bar gray"></div><div class="c-icon" style="color:var(--on-surface-variant)">🧪</div><div class="c-info"><div class="c-name">Proton Test</div><div class="c-meta">Proton 8.0 · 2.8 GB · Last used 1w ago</div><div class="c-badges"><span class="badge badge-surface">Proton 8.0</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- ══════ CONTAINER DETAIL ══════ -->
+    <div class="page" id="pageContainerDetail">
+      <div class="topbar"><button class="menu-btn" onclick="hideContainerDetail()">←</button><span class="title" id="detailTitle">Main Game Container</span><div class="actions"><button class="action-btn" onclick="showToast('Edit container settings')">✏️</button></div></div>
+      <div class="topbar-border"></div>
+      <div class="scroll-content" style="padding-top:8px">
+        <div class="tab-bar" id="detailTabs">
+          <div class="tab active" onclick="switchTab(this,'tabDGraphics')">Graphics</div>
+          <div class="tab" onclick="switchTab(this,'tabDAudio')">Audio</div>
+          <div class="tab" onclick="switchTab(this,'tabDInput')">Input</div>
+          <div class="tab" onclick="switchTab(this,'tabDSystem')">System</div>
+          <div class="tab" onclick="switchTab(this,'tabDAbout')">About</div>
+        </div>
+        <div class="tab-content active" id="tabDGraphics">
+          <div class="field"><label>Wine Version</label><div class="value" onclick="showToast('Wine 9.0')">Wine 9.0<span class="arrow">›</span></div></div>
+          <div class="field"><label>DX Wrapper</label><div class="value highlight" onclick="openModal('vegasDlModal')">VEGAS 2.7.3<span class="arrow">›</span></div></div>
+          <div class="field"><label>DXVK / VKD3D</label><div class="value" onclick="openModal('contentDlModal')">DXVK 2.3.1 + VKD3D 2.12<span class="arrow">›</span></div></div>
+          <div class="field"><label>Box64 Version</label><div class="value" onclick="showToast('Box64 0.2.8')">Box64 0.2.8<span class="arrow">›</span></div></div>
+          <div class="field"><label>Turnip Version</label><div class="value" onclick="showToast('Turnip 24.1.0')">Turnip 24.1.0<span class="arrow">›</span></div></div>
+          <div style="height:1px;background:var(--divider);margin:12px 0"></div>
+          <div class="toggle-row"><div><label>DXGI</label><div class="desc">DirectX Graphics Infrastructure</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><div><label>HUD Overlay</label><div class="desc">Show performance overlay in-game</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><div><label>VSync</label><div class="desc">Vertical synchronization</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+          <div style="height:12px"></div>
+          <div class="field"><label>Screen Size</label><div class="value" onclick="showToast('1280×720')">1280×720<span class="arrow">›</span></div></div>
+          <div class="field"><label>Startup Config</label><div class="value" onclick="showToast('VEGAS Optimized')">VEGAS Optimized<span class="arrow">›</span></div></div>
+        </div>
+        <div class="tab-content" id="tabDAudio" style="display:none">
+          <div class="field"><label>Audio Driver</label><div class="value" onclick="showToast('PulseAudio')">PulseAudio<span class="arrow">›</span></div></div>
+          <div class="toggle-row"><div><label>ALSA Output</label><div class="desc">Enable ALSA audio backend</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><div><label>Audio Latency</label><div class="desc">Low-latency audio processing</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+          <div style="height:12px"></div>
+          <div class="field"><label>Sample Rate</label><div class="value" onclick="showToast('48000 Hz')">48000 Hz<span class="arrow">›</span></div></div>
+          <div class="field"><label>Buffer Size</label><div class="value" onclick="showToast('1024 frames')">1024 frames<span class="arrow">›</span></div></div>
+        </div>
+        <div class="tab-content" id="tabDInput" style="display:none">
+          <div class="field"><label>Input Method</label><div class="value" onclick="showToast('Touch + Keyboard')">Touch + Keyboard<span class="arrow">›</span></div></div>
+          <div class="toggle-row"><div><label>On-screen Controls</label><div class="desc">Show overlay controls in-game</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><div><label>Mouse Capture</label><div class="desc">Capture pointer for FPS games</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><div><label>Gamepad Support</label><div class="desc">Bluetooth/USB gamepad input</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <div style="height:12px"></div>
+          <div class="field"><label>Controller Mapping</label><div class="value" onclick="showToast('Xbox 360')">Xbox 360<span class="arrow">›</span></div></div>
+          <div class="field"><label>Cursor Speed</label><div class="value" onclick="showToast('1.0x')">1.0x<span class="arrow">›</span></div></div>
+        </div>
+        <div class="tab-content" id="tabDSystem" style="display:none">
+          <div class="field"><label>Windows Version</label><div class="value" onclick="showToast('Windows 10')">Windows 10<span class="arrow">›</span></div></div>
+          <div class="field"><label>Drive C Size</label><div class="value" onclick="showToast('8 GB')">8 GB<span class="arrow">›</span></div></div>
+          <div class="toggle-row"><div><label>Box64 Presets</label><div class="desc">Enable performance presets</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><div><label>FEX Emulation</label><div class="desc">Fast x86 emulator for ARM</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+          <div style="height:12px"></div>
+          <div class="field"><label>Environment Variables</label><div class="value" onclick="showToast('DXVK_CONFIG_FILE=...')">DXVK_CONFIG_FILE=…<span class="arrow">›</span></div></div>
+          <button class="btn btn-danger" style="width:100%;margin-top:8px" onclick="showToast('Container deleted')">🗑 Delete Container</button>
+        </div>
+        <div class="tab-content" id="tabDAbout" style="display:none">
+          <div style="text-align:center;padding:16px 0">
+            <div style="font-size:16px;font-weight:700;color:var(--primary)" id="detailAboutName">Main Game Container</div>
+            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px">Created June 10, 2026</div>
+          </div>
+          <div class="about-divider"></div>
+          <div class="about-row"><span class="nm">Wine</span><span class="ds">9.0</span></div>
+          <div class="about-row"><span class="nm">DX Wrapper</span><span class="ds" style="color:var(--primary);font-weight:600">VEGAS 2.7.3</span></div>
+          <div class="about-row"><span class="nm">DXVK</span><span class="ds">2.3.1</span></div>
+          <div class="about-row"><span class="nm">VKD3D</span><span class="ds">2.12</span></div>
+          <div class="about-row"><span class="nm">Box64</span><span class="ds">0.2.8</span></div>
+          <div class="about-row"><span class="nm">Turnip</span><span class="ds">24.1.0</span></div>
+          <div class="about-divider"></div>
+          <div class="about-row"><span class="nm">Total Size</span><span class="ds">4.2 GB</span></div>
+          <div class="about-row"><span class="nm">Last Used</span><span class="ds">2 hours ago</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ SETTINGS ══════ -->
+    <div class="page" id="pageSettings">
+      <div class="topbar"><button class="menu-btn" onclick="toggleDrawer()">☰</button><span class="title">Settings</span><div class="actions"></div></div>
+      <div class="topbar-border"></div>
+      <div class="scroll-content">
+        <div class="section-header">Performance<div class="glow"></div></div>
+        <div class="card" style="cursor:default">
+          <div class="hud-stat" style="margin-bottom:10px"><span style="font-size:13px;font-weight:500;color:var(--on-surface)">Performance Mode</span><span style="font-size:12px;color:var(--primary);font-weight:600">VEGAS</span></div>
+          <div class="perf-bar"><div class="perf-fill" style="width:65%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--on-surface-variant);margin-top:4px"><span>Battery Saver</span><span>Balanced</span><span>Max</span></div>
+          <div style="margin-top:12px;border-top:1px solid var(--divider);padding-top:10px">
+            <div class="hud-stat" style="margin-bottom:6px"><span style="font-size:13px;color:var(--on-surface)">Wrapper</span><span style="font-size:12px;color:var(--glow);font-weight:600">VEGAS 2.7.3</span></div>
+            <div class="hud-stat" style="margin-bottom:6px"><span style="font-size:13px;color:var(--on-surface)">DXVK Version</span><span style="font-size:12px;color:var(--on-surface-variant)">2.3.1</span></div>
+            <div class="hud-stat"><span style="font-size:13px;color:var(--on-surface)">Box64 Version</span><span style="font-size:12px;color:var(--on-surface-variant)">0.2.8</span></div>
+          </div>
+        </div>
+        <div class="section-header" style="margin-top:16px">DX Wrapper<div class="glow"></div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="openModal('vegasDlModal')">📦 VEGAS Downloads</button>
+          <button class="btn btn-ghost" onclick="openModal('contentDlModal')">📥 DXVK / VKD3D</button>
+          <button class="btn btn-ghost" onclick="showToast('Box64 downloads')">💻 Box64</button>
+        </div>
+        <div class="section-header" style="margin-top:16px">Storage<div class="glow"></div></div>
+        <div class="card" style="cursor:default">
+          <div class="hud-stat" style="margin-bottom:8px"><span>Used</span><span style="font-weight:600">12.4 GB</span></div>
+          <div class="perf-bar"><div style="width:38%;height:100%;background:var(--primary);border-radius:2px"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--on-surface-variant);margin-top:4px"><span>12.4 GB used</span><span>32 GB total</span></div>
+        </div>
+        <div class="section-header" style="margin-top:16px">General<div class="glow"></div></div>
+        <div class="card" onclick="showToast('Language')"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--on-surface)">Language</span><span style="font-size:12px;color:var(--on-surface-variant)">English ›</span></div></div>
+        <div class="card" onclick="showToast('Check for updates')"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;color:var(--on-surface)">Check for Updates</span><span style="font-size:12px;color:var(--on-surface-variant)">v1.3-vegas ›</span></div></div>
+      </div>
+    </div>
+
+    <!-- ══════ APPEARANCE ══════ -->
+    <div class="page" id="pageAppearance">
+      <div class="topbar"><button class="menu-btn" onclick="toggleDrawer()">☰</button><span class="title">Appearance</span><div class="actions"></div></div>
+      <div class="topbar-border"></div>
+      <div class="scroll-content">
+        <div class="section-header">Theme Presets<div class="glow"></div></div>
+        <div class="preset-row">
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box" style="background:#1A1A1A"><div class="preset-ui"><div class="bar bar-fill" style="background:#2A2A2A"></div><div class="bar bar-accent" style="background:#8B6BE0"></div><div class="bar bar-sub" style="background:#333"></div><div class="bar bar-sub2" style="background:#333"></div></div></div><div class="preset-label">Classic Dark</div></div>
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box" style="background:#000"><div class="preset-ui"><div class="bar bar-fill" style="background:#0D0D0D"></div><div class="bar bar-accent" style="background:#BB86FC"></div><div class="bar bar-sub" style="background:#181818"></div><div class="bar bar-sub2" style="background:#181818"></div></div></div><div class="preset-label">AMOLED</div></div>
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box" style="background:#0D1B2A"><div class="preset-ui"><div class="bar bar-fill" style="background:#162435"></div><div class="bar bar-accent" style="background:#0EA5E9"></div><div class="bar bar-sub" style="background:#1E3045"></div><div class="bar bar-sub2" style="background:#1E3045"></div></div></div><div class="preset-label">Ocean</div></div>
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box" style="background:#0D1A12"><div class="preset-ui"><div class="bar bar-fill" style="background:#142010"></div><div class="bar bar-accent" style="background:#22C55E"></div><div class="bar bar-sub" style="background:#1C2E1A"></div><div class="bar bar-sub2" style="background:#1C2E1A"></div></div></div><div class="preset-label">Forest</div></div>
+        </div>
+        <div class="preset-row">
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box" style="background:#1A0D0D"><div class="preset-ui"><div class="bar bar-fill" style="background:#251515"></div><div class="bar bar-accent" style="background:#F97316"></div><div class="bar bar-sub" style="background:#301C1C"></div><div class="bar bar-sub2" style="background:#301C1C"></div></div></div><div class="preset-label">Sunset</div></div>
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box" style="background:#1A0D14"><div class="preset-ui"><div class="bar bar-fill" style="background:#25151E"></div><div class="bar bar-accent" style="background:#EC4899"></div><div class="bar bar-sub" style="background:#301C28"></div><div class="bar bar-sub2" style="background:#301C28"></div></div></div><div class="preset-label">Rose</div></div>
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box" style="background:#131419"><div class="preset-ui"><div class="bar bar-fill" style="background:#1C1D25"></div><div class="bar bar-accent" style="background:#64748B"></div><div class="bar bar-sub" style="background:#252630"></div><div class="bar bar-sub2" style="background:#252630"></div></div></div><div class="preset-label">Steel</div></div>
+          <div class="preset-item" onclick="selectPreset(this)"><div class="preset-box vegas-glow-box" style="background:#0D0015"><div class="v-badge">V</div><div class="preset-ui"><div class="bar bar-fill" style="background:#1A0A2E"></div><div class="bar bar-accent" style="background:#D946EF"></div><div class="bar bar-sub" style="background:#2A1540"></div><div class="bar bar-sub2" style="background:#2A1540"></div></div></div><div class="preset-label">VEGAS</div></div>
+        </div>
+        <div style="height:1px;background:var(--divider);margin:16px 0"></div>
+        <div class="section-header">Custom Accent<div class="glow"></div></div>
+        <p style="font-size:11px;color:var(--on-surface-variant);margin-bottom:10px">Selecting a color switches to Custom preset</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--primary);border:2px solid var(--divider);flex-shrink:0"></div>
+          <div style="flex:1;height:24px;border-radius:12px;background:linear-gradient(90deg,#D946EF,#7C3AED,#22D3EE,#FBBF24,#22C55E);border:1px solid var(--divider);cursor:pointer" onclick="showToast('Accent color changed')"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ INPUT CONTROLS ══════ -->
+    <div class="page" id="pageInputControls">
+      <div class="topbar"><button class="menu-btn" onclick="toggleDrawer()">☰</button><span class="title">Input Controls</span><div class="actions"><button class="action-btn" onclick="showToast('Add control')">➕</button></div></div>
+      <div class="topbar-border"></div>
+      <div class="scroll-content">
+        <div class="section-header">Control Layout<div class="glow"></div></div>
+        <div style="background:var(--surface);border-radius:14px;border:1px solid var(--divider);padding:24px;text-align:center;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:40px;opacity:.2">🕹️</div>
+          <p style="font-size:12px;color:var(--on-surface-variant);margin-top:8px">Tap to edit on-screen control layout</p>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="showToast('Layout editor opened')">✏️ Edit Layout</button>
+        </div>
+        <div class="toggle-row" style="margin-top:8px"><div><label>On-screen Controls</label><div class="desc">Show overlay in-game</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="toggle-row"><div><label>Gamepad</label><div class="desc">Bluetooth gamepad support</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="toggle-row"><div><label>Mouse Capture</label><div class="desc">Capture pointer for look</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+        <div style="height:12px"></div>
+        <div class="field"><label>Controller Profile</label><div class="value" onclick="showToast('Xbox 360')">Xbox 360<span class="arrow">›</span></div></div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="showToast('Layout imported')">📂 Import Layout</button>
+      </div>
+    </div>
+
+    <!-- ══════ ADRENOTOOLS ══════ -->
+    <div class="page" id="pageAdrenoTools">
+      <div class="topbar"><button class="menu-btn" onclick="toggleDrawer()">☰</button><span class="title">AdrenoTools</span><div class="actions"></div></div>
+      <div class="topbar-border"></div>
+      <div class="scroll-content">
+        <div class="section-header">GPU Tools<div class="glow"></div></div>
+        <div class="card" style="cursor:default">
+          <div class="hud-stat" style="margin-bottom:8px"><span style="color:var(--on-surface);font-weight:500">Driver</span><span style="color:var(--glow);font-weight:600">Turnip 24.1.0</span></div>
+          <div class="hud-stat" style="margin-bottom:8px"><span style="color:var(--on-surface);font-weight:500">Vulkan API</span><span style="color:var(--on-surface-variant)">1.3.275</span></div>
+          <div class="hud-stat"><span style="color:var(--on-surface);font-weight:500">GPU</span><span style="color:var(--on-surface-variant)">Adreno 730</span></div>
+        </div>
+        <div class="toggle-row"><div><label>Shader Cache</label><div class="desc">Cache compiled shaders</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="toggle-row"><div><label>Async Compilation</label><div class="desc">Compile shaders asynchronously</div></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="toggle-row"><div><label>Force 32-bit</label><div class="desc">Force 32-bit color depth</div></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+        <div style="height:12px"></div>
+        <div class="field"><label>Turnip Version</label><div class="value" onclick="showToast('Turnip 24.1.0')">24.1.0<span class="arrow">›</span></div></div>
+        <button class="btn btn-danger" style="width:100%;margin-top:8px" onclick="showToast('Shader cache cleared')">🗑 Clear Shader Cache</button>
+      </div>
+    </div>
+
+    <!-- ══════ DRAWER ══════ -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+    <div class="drawer" id="drawer">
+      <div class="drawer-header">
+        <div class="brand">★ STAR EMULATOR</div>
+        <div class="sub">POWERED BY VEGAS</div>
+        <div class="glow-line"></div>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-section">Main</div>
+        <div class="drawer-item active" onclick="navigateTo('pageShortcuts',this)"><span class="icon">⊞</span> Shortcuts</div>
+        <div class="drawer-item" onclick="navigateTo('pageContainers',this)"><span class="icon">🗂</span> Containers</div>
+        <div class="drawer-section">System</div>
+        <div class="drawer-item" onclick="navigateTo('pageSettings',this)"><span class="icon">⚙</span> Settings</div>
+        <div class="drawer-item" onclick="navigateTo('pageAppearance',this)"><span class="icon">🎨</span> Appearance</div>
+        <div class="drawer-item" onclick="navigateTo('pageInputControls',this)"><span class="icon">🕹️</span> Input Controls</div>
+        <div class="drawer-item" onclick="navigateTo('pageAdrenoTools',this)"><span class="icon">🔧</span> AdrenoTools</div>
+        <div class="drawer-section">Info</div>
+        <div class="drawer-item" onclick="toggleDrawer();openModal('aboutModal')"><span class="icon">ℹ</span> About</div>
+      </div>
+    </div>
+
+    <!-- ══════ MODALS ══════ -->
+    <div class="modal-overlay" id="aboutModal">
+      <div class="modal" style="max-width:360px"><div class="modal-strip"></div>
+        <div class="modal-body modal-centered">
+          <div class="about-logo"><svg viewBox="0 0 64 55"><defs><linearGradient id="vgA" x1="0" y1="0" x2="64" y2="55"><stop offset="0%" stop-color="#D946EF"/><stop offset="100%" stop-color="#22D3EE"/></linearGradient></defs><path d="M10 8 L32 47 L54 8" stroke="url(#vgA)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="32" cy="47" r="3" fill="#22D3EE"/></svg></div>
+          <div class="about-title">STAR EMULATOR</div><div class="about-badge">POWERED BY VEGAS</div><div class="about-version">v1.3-vegas</div>
+          <div class="about-divider"></div>
+          <div class="about-st">Powered By</div>
+          <div class="about-row"><span class="nm">Wine</span><span class="ds">Windows compatibility layer</span></div>
+          <div class="about-row"><span class="nm">Box64</span><span class="ds">x86_64 emulation on ARM</span></div>
+          <div class="about-row"><span class="nm">VEGAS</span><span class="ds">D3D9/11 → Vulkan</span></div>
+          <div class="about-divider"></div>
+          <div class="about-st">Credits</div>
+          <div class="about-row"><span class="nm">brunodev85</span><span class="ds">Winlator</span></div>
+          <div class="about-row"><span class="nm">The412Banner</span><span class="ds">Star-Compose</span></div>
+          <div class="about-row"><span class="nm">VEGAS Team</span><span class="ds">DXVK fork for Android</span></div>
+          <button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="closeModal('aboutModal')">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="vegasDlModal">
+      <div class="modal" style="max-width:380px">
+        <div style="background:linear-gradient(180deg,rgba(112,26,117,.25),var(--surface));padding:16px 20px 12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="flex:1"><div style="font-size:17px;font-weight:900;letter-spacing:2px;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent">VEGAS DOWNLOADS</div><div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px">Select a release</div></div>
+            <button onclick="closeModal('vegasDlModal')" style="background:none;border:none;color:var(--on-surface-variant);font-size:22px;cursor:pointer;padding:4px">✕</button>
+          </div>
+        </div>
+        <div style="height:1px;background:linear-gradient(90deg,rgba(192,132,252,.6),transparent)"></div>
+        <div class="modal-body" style="padding:12px 16px">
+          <div class="release"><div class="ri"><div class="rn">VEGAS 2.8.0</div><div class="rb"><span class="rel-badge latest">LATEST</span><span class="rel-badge rec">RECOMMENDED</span></div><div class="rm"><span>v2.8.0</span><span>·</span><span class="rt">VEGAS Wrapper</span></div></div><div class="ra"><button class="btn btn-primary btn-sm" onclick="simDownload(this,'VEGAS 2.8.0')">⬇ Download</button></div></div>
+          <div class="glow-line"></div>
+          <div class="release"><div class="ri"><div class="rn">VEGAS 2.7.3</div><div class="rb"><span class="rel-badge inst">INSTALLED</span></div><div class="rm"><span>v2.7.3</span><span>·</span><span class="rt">VEGAS Wrapper</span></div></div><div class="ra"><span style="font-size:24px;opacity:.5;color:var(--primary)">✓</span></div></div>
+          <div class="release"><div class="ri"><div class="rn">VEGAS 2.6.1</div><div class="rm"><span>v2.6.1</span><span>·</span><span class="rt">VEGAS Wrapper</span></div></div><div class="ra"><button class="btn btn-primary btn-sm" onclick="simDownload(this,'VEGAS 2.6.1')">⬇</button></div></div>
+          <div style="text-align:center;padding:8px 0 4px;font-size:9px;color:var(--on-surface-variant)">Releases from isygold/vegas-releases</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="contentDlModal">
+      <div class="modal" style="max-width:360px"><div class="modal-strip"></div>
+        <div class="modal-body">
+          <div style="font-size:13px;font-weight:700;letter-spacing:2px;color:var(--primary);margin-bottom:4px">CONTENT DOWNLOADS</div>
+          <div style="font-size:11px;color:var(--on-surface-variant);margin-bottom:12px">💾 DXVK + 💻 Box64 + 🍷 Wine</div>
+          <div class="dl-item"><div class="dl-icon" style="color:var(--glow)">💾</div><div class="dl-info"><div class="dl-title">dxvk-2.3.1</div><div class="dl-sub">Installed · Code 1</div></div><button class="btn btn-ghost btn-sm">ℹ</button></div>
+          <div class="dl-item"><div class="dl-icon" style="color:var(--glow)">💾</div><div class="dl-info"><div class="dl-title">vkd3d-2.12</div><div class="dl-sub">Available</div></div><button class="btn btn-primary btn-sm" onclick="simDownload(this,'vkd3d-2.12')">⬇ Download</button></div>
+          <div class="dl-item"><div class="dl-icon" style="color:var(--secondary)">🍷</div><div class="dl-info"><div class="dl-title">wine-9.0</div><div class="dl-sub" style="color:var(--tertiary)">Installed</div></div><button class="btn btn-ghost btn-sm">ℹ</button></div>
+          <div class="dl-item"><div class="dl-icon" style="color:var(--on-surface-variant)">💻</div><div class="dl-info"><div class="dl-title">box64-0.2.8</div><div class="dl-sub">2.6 MB</div></div><button class="btn btn-primary btn-sm" onclick="simDownload(this,'box64-0.2.8')">⬇</button></div>
+          <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="closeModal('contentDlModal')">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="installingModal">
+      <div style="background:var(--surface);border-radius:16px;padding:36px;text-align:center;border:1px solid var(--divider);max-width:240px;width:90%">
+        <div class="spinner"></div>
+        <div style="font-size:14px;font-weight:600;color:var(--on-surface)">Installing…</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px">Extracting wrapper assets</div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:16px" onclick="closeModal('installingModal')">Close</button>
+      </div>
+    </div>
+
+    <div class="toast-container"><div class="toast" id="toast"></div></div>
+  </div>
+
+  <!-- ══════ BOTTOM NAV ══════ -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="navigateTo('pageShortcuts',null)"><div class="nav-icon">⊞</div>Shortcuts</div>
+    <div class="nav-item" onclick="navigateTo('pageContainers',null)"><div class="nav-icon">🗂</div>Containers</div>
+    <div class="nav-item" onclick="navigateTo('pageSettings',null)"><div class="nav-icon">⚙</div>Settings</div>
+    <div class="nav-item" onclick="navigateTo('pageAppearance',null)"><div class="nav-icon">🎨</div>Appearance</div>
+    <div class="nav-item" onclick="navigateTo('pageInputControls',null)"><div class="nav-icon">🕹️</div>Controls</div>
+  </div>
+</div>
+
+<script>
+// ── Splash Animation ──
+let step = 0;
+const splashStatus = document.getElementById('splashStatus');
+const splashDots = document.getElementById('splashDots');
+const splashProgress = document.getElementById('splashProgress');
+const splashEnter = document.getElementById('splashEnter');
+const statuses = ["Initializing VEGAS engine","Loading graphics pipeline","Configuring Wine prefix","Setting up DXVK runtime","Calibrating performance"];
+const si = setInterval(() => {
+  step++;
+  if (step <= 5) { splashProgress.style.width = (step * 20) + '%'; splashStatus.textContent = statuses[Math.min(step - 1, 4)]; splashDots.textContent = '.'.repeat((step % 3) + 1); }
+  if (step >= 5) { clearInterval(si); splashDots.textContent = ''; splashStatus.textContent = 'Ready'; splashEnter.style.opacity = '1'; }
+}, 600);
+splashEnter.addEventListener('click', () => { document.getElementById('pageSplash').classList.remove('active'); navigateTo('pageShortcuts',null); });
+
+// ── Navigation ──
+function navigateTo(pageId, drawerItem) {
+  closeDrawer();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(pageId);
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.bottom-nav .nav-item').forEach(n => n.classList.remove('active'));
+  const bn = document.querySelector(`.bottom-nav .nav-item[onclick*='${pageId}']`);
+  if (bn) bn.classList.add('active');
+  document.querySelectorAll('.drawer-item').forEach(d => d.classList.remove('active'));
+  if (drawerItem) drawerItem.classList.add('active');
+  else { const di = document.querySelector(`.drawer-item[onclick*='${pageId}']`); if (di) di.classList.add('active'); }
+}
+
+// ── Drawer ──
+function toggleDrawer() { document.getElementById('drawer').classList.toggle('open'); document.getElementById('drawerOverlay').classList.toggle('open'); }
+function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('open'); }
+
+// ── Modals ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); }); });
+
+// ── Container Detail ──
+let currentContainerType = 'main';
+function openContainerDetail(type) {
+  currentContainerType = type;
+  const name = type === 'main' ? 'Main Game Container' : 'Legacy Winlator';
+  document.getElementById('detailTitle').textContent = name;
+  document.getElementById('detailAboutName').textContent = name;
+  navigateTo('pageContainerDetail', null);
+  document.querySelectorAll('#detailTabs .tab').forEach((t,i) => { t.classList.toggle('active', i === 0); });
+  document.querySelectorAll('#pageContainerDetail .tab-content').forEach((t,i) => { t.style.display = i === 0 ? 'block' : 'none'; });
+}
+function hideContainerDetail() { navigateTo('pageContainers', null); }
+
+// ── Tabs ──
+function switchTab(el, tabId) {
+  document.querySelectorAll('#detailTabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('#pageContainerDetail .tab-content').forEach(t => t.style.display = 'none');
+  document.getElementById(tabId).style.display = 'block';
+}
+
+// ── Presets ──
+let presetSelected = false;
+function selectPreset(el) {
+  document.querySelectorAll('.preset-item').forEach(p => { p.querySelector('.preset-box').classList.remove('selected'); p.querySelector('.preset-label').classList.remove('selected'); const c = p.querySelector('.check'); if(c)c.remove(); });
+  el.querySelector('.preset-box').classList.add('selected');
+  el.querySelector('.preset-label').classList.add('selected');
+  const check = document.createElement('div'); check.className = 'check'; check.textContent = '✓';
+  el.querySelector('.preset-box').appendChild(check);
+  presetSelected = true;
+  showToast('Theme applied');
+}
+
+// ── Download Simulation ──
+function simDownload(btn, name) {
+  btn.textContent = '⏳'; btn.disabled = true;
+  showToast('Downloading ' + name + '...');
+  setTimeout(() => { 
+    btn.textContent = '✓'; 
+    btn.style.cssText = 'background:transparent;color:var(--primary);opacity:0.5;cursor:default;font-size:18px;border:none;padding:8px';
+    showToast(name + ' installed');
+  }, 1500);
+}
+
+// ── Toast ──
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.remove('show'); }, 1800);
+}
+</script>
+</body>
+</html>

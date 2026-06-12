@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LSFG + lossless.dll — Implementation Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --primary: #D946EF;
+    --primary-dim: #701A75;
+    --secondary: #22D3EE;
+    --tertiary: #FBBF24;
+    --glow: #C084FC;
+    --bg-deep: #0D0015;
+    --bg-surface: #1A0A2E;
+    --bg-card: #2A1540;
+    --bg-code: #11001F;
+    --text-primary: #F5F0FF;
+    --text-secondary: #C8B8E0;
+    --text-dim: #9A85B5;
+    --border: #3D2060;
+    --success: #4ADE80;
+    --danger: #F87171;
+    --warning: #FBBF24;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    background: linear-gradient(135deg, var(--bg-surface), var(--bg-deep));
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg, var(--primary), var(--secondary)) 1;
+    padding: 24px 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 20px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .header h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header .badge {
+    background: var(--bg-card);
+    color: var(--secondary);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--secondary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .header .meta {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-left: auto;
+  }
+
+  /* ─── Container ─── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 32px 80px;
+  }
+
+  /* ─── Branch Card ─── */
+  .branch-card {
+    background: linear-gradient(135deg, var(--bg-surface), var(--bg-card));
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .branch-card .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .branch-card .name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    color: var(--secondary);
+    background: rgba(34, 211, 238, 0.1);
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(34, 211, 238, 0.25);
+  }
+
+  .branch-card .status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+  }
+
+  /* ─── Section ─── */
+  .section {
+    margin-bottom: 36px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .phase-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .phase-badge.a { background: linear-gradient(135deg, #D946EF, #C084FC); }
+  .phase-badge.b { background: linear-gradient(135deg, #22D3EE, #0E7490); }
+  .phase-badge.c { background: linear-gradient(135deg, #FBBF24, #F59E0B); }
+  .phase-badge.d { background: linear-gradient(135deg, #4ADE80, #22C55E); }
+  .phase-badge.e { background: linear-gradient(135deg, #F87171, #EF4444); }
+
+  .section-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .section-header h2 .phase-range {
+    color: var(--text-dim);
+    font-weight: 400;
+    font-size: 14px;
+  }
+
+  /* ─── Cards ─── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    transition: border-color .2s, transform .15s;
+  }
+
+  .card:hover {
+    border-color: var(--glow);
+    transform: translateY(-1px);
+  }
+
+  .card .file-path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--secondary);
+    background: rgba(34, 211, 238, 0.08);
+    padding: 3px 8px;
+    border-radius: 5px;
+    display: inline-block;
+    margin-bottom: 8px;
+    word-break: break-all;
+  }
+
+  .card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+
+  .card p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .card .change {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--bg-code);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--tertiary);
+    border-left: 3px solid var(--tertiary);
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+
+  .tag.new { background: rgba(74, 222, 128, 0.15); color: var(--success); border: 1px solid rgba(74, 222, 128, 0.3); }
+  .tag.fix { background: rgba(248, 113, 113, 0.15); color: var(--danger); border: 1px solid rgba(248, 113, 113, 0.3); }
+  .tag.mod { background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.3); }
+  .tag.str { background: rgba(192, 132, 252, 0.15); color: var(--glow); border: 1px solid rgba(192, 132, 252, 0.3); }
+
+  /* ─── Flow Diagram ─── */
+  .flow {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+
+  .flow h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+  }
+
+  .flow-steps {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 0;
+  }
+
+  .flow-step {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 1 auto;
+  }
+
+  .flow-step .icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .icon.user { background: rgba(217, 70, 239, 0.2); color: var(--primary); }
+  .icon.ui { background: rgba(34, 211, 238, 0.2); color: var(--secondary); }
+  .icon.java { background: rgba(251, 191, 36, 0.2); color: var(--tertiary); }
+  .icon.native { background: rgba(192, 132, 252, 0.2); color: var(--glow); }
+
+  .flow-arrow {
+    color: var(--text-dim);
+    font-size: 18px;
+    padding: 0 6px;
+    font-weight: 300;
+  }
+
+  /* ─── Signature ─── */
+  .sig {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: var(--bg-code);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--secondary);
+    border-left: 3px solid var(--secondary);
+  }
+
+  /* ─── File Table ─── */
+  .file-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .file-table th {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .file-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  .file-table tr:hover td {
+    background: rgba(192, 132, 252, 0.04);
+  }
+
+  .file-table .fname {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 680px) {
+    .header { padding: 16px 18px; }
+    .header h1 { font-size: 17px; }
+    .container { padding: 20px 16px 60px; }
+    .card-grid { grid-template-columns: 1fr; }
+    .flow-steps { flex-direction: column; align-items: stretch; }
+    .flow-arrow { transform: rotate(90deg); padding: 4px 0; text-align: center; }
+    .file-table { font-size: 12px; }
+    .file-table td, .file-table th { padding: 7px 8px; }
+    .file-table .fname { white-space: normal; word-break: break-all; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">V</div>
+    <h1>LSFG + lossless.dll</h1>
+    <span class="badge">Implementation Plan</span>
+    <span class="meta"><strong>Phase</strong> A–E &nbsp;·&nbsp; <strong>Branch</strong> fix/lsfg-frame-gen</span>
+  </div>
+</header>
+
+<!-- ═══ BODY ═══ -->
+<div class="container">
+
+  <!-- ─── Branch Info ─── -->
+  <div class="branch-card">
+    <span class="label">Branch</span>
+    <code class="name">fix/lsfg-frame-gen</code>
+    <span class="label" style="margin-left:12px;">Base</span>
+    <code class="name" style="background:rgba(192,132,252,0.1);border-color:rgba(192,132,252,0.25);color:var(--glow);">feat/vegas-ui-redesign</code>
+    <span class="label" style="margin-left:12px;">Remote</span>
+    <code class="name" style="background:rgba(74,222,128,0.1);border-color:rgba(74,222,128,0.25);color:var(--success);">isygold/star-is</code>
+    <div class="status">
+      <span class="status-dot"></span>
+      <span style="font-size:13px;color:var(--success);font-weight:600;">Active</span>
+    </div>
+  </div>
+
+  <!-- ═══ FLOW DIAGRAM ═══ -->
+  <div class="flow">
+    <h3>Runtime Flow — How lossless.dll Gets Used</h3>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <span class="icon user">U</span>
+        <span>User places <code>lossless.dll</code> on device</span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon ui">UI</span>
+        <span>Enable "Custom FrameGen DLL" + file picker</span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon ui">UI</span>
+        <span>Save container: <code>lsfgCustomDllEnabled=true</code></span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon java">JV</span>
+        <span><code>LsfgManager.ensureLayerInstalled()</code></span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon java">JV</span>
+        <span><code>installCustomDll()</code> → copy to layer dir</span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon java">JV</span>
+        <span>Set env <code>LSFG_DLL_PATH=...</code></span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon native">N</span>
+        <span>Wine starts → Vulkan loads lsfg layer</span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon native">N</span>
+        <span>Layer reads <code>lossless.dll</code> → extracts shaders</span>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <span class="icon native" style="background:rgba(74,222,128,0.2);color:var(--success);">✓</span>
+        <span style="color:var(--success);font-weight:600;">Frame generation active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE A ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-badge a">A</div>
+      <h2>Fix the Build <span class="phase-range">— get .so into APK</span></h2>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="file-path">app/src/main/cpp/CMakeLists.txt</span>
+        <h3><span class="tag fix">FIX</span> Re-enable lsfg-vk subdirectory</h3>
+        <p>Uncomment <code>add_subdirectory(lsfg-vk)</code>. Wrap in <code>set(CMAKE_CLANG_TIDY OFF)</code> to bypass the clang-tidy issue that caused it to be disabled.</p>
+        <div class="change"># add_subdirectory(lsfg-vk) → add_subdirectory(lsfg-vk)</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">build-lsfg-android.sh</span>
+        <h3><span class="tag fix">FIX</span> Validate NDK / CMake paths</h3>
+        <p>Ensure the script works with NDK 26+ and CMake bundled in the NDK toolchain. Add fallback detection for common NDK install locations.</p>
+        <div class="change">NDK="${ANDROID_NDK_HOME:-${ANDROID_NDK:-/opt/android-ndk}}"</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">build.gradle</span>
+        <h3><span class="tag mod">MOD</span> Wire lsfg-vk build into gradle</h3>
+        <p>Add a <code>preBuild</code> task that runs <code>build-lsfg-android.sh</code> so the .so is always built before the APK is assembled. Skip if .so already exists.</p>
+        <div class="change">tasks.register("buildLsfg") { … } &rarr; preBuild.dependsOn(buildLsfg)</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">app/src/main/jniLibs/arm64-v8a/</span>
+        <h3><span class="tag new">NEW</span> <code>libVkLayer_LSFGVK_frame_generation.so</code></h3>
+        <p>After the build fix, this file will exist in jniLibs. <code>LsfgManager.ensureLayerInstalled()</code> will find it via <code>nativeLibraryDir</code> and copy it into the container.</p>
+        <div class="change">Size: ~200-400 KB &nbsp;·&nbsp; ARM64 &nbsp;·&nbsp; Vulkan 1.3 implicit layer</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE B ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-badge b">B</div>
+      <h2>Add lossless.dll Support <span class="phase-range">— extraction + env wiring</span></h2>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="file-path">LsfgManager.java</span>
+        <h3><span class="tag new">NEW</span> <code>installCustomDll()</code> method</h3>
+        <p>New static method that copies the user's <code>lossless.dll</code> from its chosen location into the container's Vulkan layer directory. Returns <code>true</code> on success.</p>
+        <div class="sig">public static boolean installCustomDll(File rootDir, File dllFile)</div>
+        <div class="change">Copies to: <code>&lt;rootDir&gt;/usr/share/vulkan/implicit_layer.d/lsfg/lossless.dll</code></div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">GuestProgramLauncherComponent.java</span>
+        <h3><span class="tag mod">MOD</span> Wire DLL install + env vars in launch</h3>
+        <p>After <code>ensureLayerInstalled()</code>, if custom DLL is enabled: call <code>LsfgManager.installCustomDll()</code> and set <code>LSFG_DLL_PATH</code> env var pointing to the DLL. Check all return values.</p>
+        <div class="change">envVars.put("LSFG_DLL_PATH", layerDir + "/lossless.dll");</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">LsfgManager.java</span>
+        <h3><span class="tag fix">FIX</span> Check return value at call site</h3>
+        <p>Currently line 387 discards the boolean return. Change to log a warning when installation fails and skip setting up LSFG env vars.</p>
+        <div class="change">if (!LsfgManager.ensureLayerInstalled(context, rootDir)) {<br>&nbsp;&nbsp;Log.w(TAG, "LSFG layer not available");<br>&nbsp;&nbsp;return;<br>}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE C ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-badge c">C</div>
+      <h2>Container Model <span class="phase-range">— new fields + persistence</span></h2>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="file-path">Container.java</span>
+        <h3><span class="tag new">NEW</span> Two new fields</h3>
+        <p><strong><code>lsfgCustomDllEnabled</code></strong> (boolean, default <code>false</code>) — whether to use a user-provided lossless.dll.<br>
+        <strong><code>lsfgCustomDllPath</code></strong> (String, default <code>""</code>) — absolute path to the user's lossless.dll on device storage.</p>
+        <div class="sig">private boolean lsfgCustomDllEnabled = false;<br>private String lsfgCustomDllPath = "";</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">Container.java</span>
+        <h3><span class="tag mod">MOD</span> Getters, setters, save, load</h3>
+        <p>Add <code>get/set</code> methods. Add to <code>saveData()</code> JSON and <code>loadData()</code> switch statement for persistence across container restarts.</p>
+        <div class="change">data.put("lsfgCustomDllEnabled", lsfgCustomDllEnabled);<br>case "lsfgCustomDllEnabled": setLsfgCustomDllEnabled(data.getBoolean(key)); break;</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">Container.java</span>
+        <h3><span class="tag mod">MOD</span> Defaults + constants</h3>
+        <p>Add <code>DEFAULT_LSFG_CUSTOM_DLL_ENABLED = false</code> constant alongside existing <code>DEFAULT_LSFG_ENABLED</code> etc.</p>
+        <div class="change">public static final boolean DEFAULT_LSFG_CUSTOM_DLL_ENABLED = false;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE D ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-badge d">D</div>
+      <h2>UI <span class="phase-range">— toggle + file picker in container settings</span></h2>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="file-path">ContainerDetailViewModel.kt</span>
+        <h3><span class="tag new">NEW</span> State for custom DLL</h3>
+        <p>Add <code>lsfgCustomDllEnabled</code> and <code>lsfgCustomDllPath</code> mutable state. Load from container on init, save on commit.</p>
+        <div class="sig">var lsfgCustomDllEnabled by mutableStateOf(false)<br>var lsfgCustomDllPath by mutableStateOf("")</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">ContainerDetailScreen.kt</span>
+        <h3><span class="tag new">NEW</span> Toggle + file selector</h3>
+        <p>Add below existing LSFG toggle in the Graphics tab:<br>
+        1. Switch "Use Custom FrameGen DLL"<br>
+        2. When enabled, show "Select lossless.dll" button → launches SAF file picker<br>
+        3. Show selected file path, "Clear" button</p>
+        <div class="change">Row { Switch(checked=…, onCheck=…) Text("Use Custom Lossless.dll") }<br>if (enabled) { Button("Browse…") … }</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">strings.xml</span>
+        <h3><span class="tag new">NEW</span> String resources</h3>
+        <p>Add UI strings for the new feature:</p>
+        <div class="change">&lt;string name="lsfg_custom_dll"&gt;Use Custom Lossless.dll&lt;/string&gt;<br>&lt;string name="lsfg_custom_dll_desc"&gt;Provide your own lossless.dll from Lossless Scaling on PC for enhanced frame gen shaders&lt;/string&gt;<br>&lt;string name="lsfg_custom_dll_browse"&gt;Select lossless.dll…&lt;/string&gt;<br>&lt;string name="lsfg_custom_dll_clear"&gt;Clear&lt;/string&gt;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE E ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-badge e">E</div>
+      <h2>Fix Runtime Wiring <span class="phase-range">— callbacks that actually do things</span></h2>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <span class="file-path">XServerDisplayActivity.java</span>
+        <h3><span class="tag fix">FIX</span> Implement <code>onApplyLsfg</code> body</h3>
+        <p>Currently empty (<code>// LSFG settings changed - apply to the running environment</code>). Since runtime reconfiguration of a Vulkan layer is not possible (layers are loaded at <code>vkCreateInstance</code>), this should write the current params to a config file that the layer can read on the next frame, OR show a persistent "restart required" indicator.</p>
+        <div class="change">Best approach: Write multiplier/quality/flow-scale to <code>/tmp/lsfg_config.txt</code> for the layer to poll</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">XServerDisplayActivity.java</span>
+        <h3><span class="tag fix">FIX</span> <code>onLsfgToggle</code> → show toast</h3>
+        <p>Currently only flips local state (<code>MutableStateFlow</code>). Since Vulkan layers can't be hot-toggled, this should show a Snackbar/Toast: "LSFG requires container restart to take effect".</p>
+        <div class="change">state.onLsfgToggle = () -> {<br>&nbsp;&nbsp;boolean next = !XServerDrawerState.INSTANCE.getLsfgEnabled();<br>&nbsp;&nbsp;XServerDrawerState.INSTANCE.setLsfgEnabled(next);<br>&nbsp;&nbsp;showToast(next ? "LSFG enabled — restart container" : "LSFG disabled — restart container");<br>};</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">GuestProgramLauncherComponent.java</span>
+        <h3><span class="tag fix">FIX</span> Respect shortcut-level override</h3>
+        <p>Line 389-391 checks <code>shortcut.getExtra("lsfgEnabled")</code> to override the container setting. This check runs <strong>after</strong> <code>ensureLayerInstalled()</code>, meaning the layer files are extracted even if the shortcut overrides to disabled. Move the layer installation after the shortcut override check.</p>
+        <div class="change">// Move ensureLayerInstalled() + installCustomDll() after shortcut override</div>
+      </div>
+
+      <div class="card">
+        <span class="file-path">XServerDisplayActivity.java</span>
+        <h3><span class="tag mod">MOD</span> Sync container → drawer state after setupXEnvironment</h3>
+        <p>Already done at line 1319-1328 (verified). No change needed — but ensure custom DLL fields are also synced.</p>
+        <div class="change" style="color:var(--success);">✓ Already wired: drawState.setLsfgEnabled(container.isLsfgEnabled()) etc.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FILE TABLE ═══ -->
+  <div class="section">
+    <div class="section-header" style="border-bottom-width:2px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--glow),var(--primary));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;">Σ</div>
+      <h2>All Files &amp; Their Changes</h2>
+    </div>
+
+    <table class="file-table">
+      <thead>
+        <tr><th>File</th><th>Phase</th><th>Change</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fname">cpp/CMakeLists.txt</td>
+          <td><span class="tag fix">FIX</span></td>
+          <td>Uncomment add_subdirectory(lsfg-vk), disable clang-tidy for lsfg target</td>
+        </tr>
+        <tr>
+          <td class="fname">build-lsfg-android.sh</td>
+          <td><span class="tag fix">FIX</span></td>
+          <td>Improve NDK detection, add error handling, validate .so output</td>
+        </tr>
+        <tr>
+          <td class="fname">build.gradle</td>
+          <td><span class="tag mod">MOD</span></td>
+          <td>Add buildLsfg task, wire into preBuild dependency chain</td>
+        </tr>
+        <tr>
+          <td class="fname">LsfgManager.java</td>
+          <td><span class="tag new">NEW</span> <span class="tag fix">FIX</span></td>
+          <td>Add installCustomDll(); check return value at call site; log failures</td>
+        </tr>
+        <tr>
+          <td class="fname">Container.java</td>
+          <td><span class="tag new">NEW</span></td>
+          <td>Add lsfgCustomDllEnabled + lsfgCustomDllPath fields, save/load, getters/setters</td>
+        </tr>
+        <tr>
+          <td class="fname">ContainerDetailViewModel.kt</td>
+          <td><span class="tag new">NEW</span></td>
+          <td>Mutable state for custom DLL, init from container, save on commit</td>
+        </tr>
+        <tr>
+          <td class="fname">ContainerDetailScreen.kt</td>
+          <td><span class="tag new">NEW</span></td>
+          <td>Toggle row + file picker button + path display + clear button</td>
+        </tr>
+        <tr>
+          <td class="fname">GuestProgramLauncherComponent.java</td>
+          <td><span class="tag fix">FIX</span> <span class="tag mod">MOD</span></td>
+          <td>Reorder: shortcut override → layer install + custom DLL; add LSFG_DLL_PATH env var</td>
+        </tr>
+        <tr>
+          <td class="fname">XServerDisplayActivity.java</td>
+          <td><span class="tag fix">FIX</span></td>
+          <td>Implement onApplyLsfg body; fix onLsfgToggle to show restart toast; sync custom DLL state</td>
+        </tr>
+        <tr>
+          <td class="fname">strings.xml</td>
+          <td><span class="tag new">NEW</span></td>
+          <td>Add lsfg_custom_dll, lsfg_custom_dll_desc, lsfg_custom_dll_browse, lsfg_custom_dll_clear</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══ FOOTER ═══ -->
+  <div style="margin-top:40px;padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div style="display:flex;gap:16px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-dim);">Phase Key:</span>
+      <span><span class="tag fix">FIX</span> = Bug fix</span>
+      <span><span class="tag new">NEW</span> = New feature</span>
+      <span><span class="tag mod">MOD</span> = Modification</span>
+      <span><span class="tag str">STR</span> = String resource</span>
+    </div>
+    <span style="font-size:11px;color:var(--text-dim);">branch: fix/lsfg-frame-gen &nbsp;·&nbsp; base: feat/vegas-ui-redesign</span>
+  </div>
+
+</div>
+</body>
+</html>

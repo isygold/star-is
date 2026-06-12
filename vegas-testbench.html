@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VEGAS UI Test Bench — Star Emulator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: #0D0015; color: #E8E8E8; padding: 16px;
+  }
+  :root {
+    --primary: #D946EF; --primary-dim: #701A75; --secondary: #22D3EE;
+    --tertiary: #FBBF24; --glow: #C084FC; --surface: #1A0A2E;
+    --surface-variant: #2A1540; --bg: #0D0015; --on-surface: #E8E8E8;
+    --on-surface-variant: #AAAAAA; --divider: #3A1A5E; --outline: #5A2A7E;
+    --error: #EF5350;
+  }
+
+  /* ── Table of Contents ── */
+  .toc { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: 12px 0 8px; display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--divider); margin-bottom: 20px; }
+  .toc a { color: var(--primary); text-decoration: none; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--divider); transition: background 0.15s; }
+  .toc a:hover { background: rgba(217,70,239,0.1); }
+
+  /* ── Section ── */
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 16px; font-weight: 700; letter-spacing: 2px; color: var(--primary); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg,var(--primary),transparent); }
+  .component-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .component-card { background: var(--surface); border-radius: 14px; border: 1px solid var(--divider); padding: 16px; }
+  .component-card h3 { font-size: 11px; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .component-card .row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .component-card .row:last-child { margin-bottom: 0; }
+  .component-card .label { font-size: 10px; color: var(--on-surface-variant); min-width: 70px; flex-shrink: 0; }
+  .component-card .desc { font-size: 9px; color: var(--on-surface-variant); margin-top: 2px; }
+
+  /* ── Colors ── */
+  .color-swatch { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch { width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--divider); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; font-size: 7px; font-weight: 600; letter-spacing: 0.5px; position: relative; }
+  .swatch .name { background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 3px; }
+  .swatch.primary { background: var(--primary); }
+  .swatch.secondary { background: var(--secondary); }
+  .swatch.tertiary { background: var(--tertiary); }
+  .swatch.glow { background: var(--glow); }
+  .swatch.surface { background: var(--surface); }
+  .swatch.surface-variant { background: var(--surface-variant); }
+  .swatch.bg { background: var(--bg); }
+  .swatch.on-surface { background: var(--on-surface); }
+  .swatch.on-surface-variant { background: var(--on-surface-variant); }
+  .swatch.divider { background: var(--divider); }
+  .swatch.outline { background: var(--outline); }
+  .swatch.error { background: var(--error); }
+  .swatch.primary-dim { background: var(--primary-dim); }
+
+  /* ── Buttons ── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 16px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--primary); color: #0D0015; }
+  .btn-secondary { background: var(--secondary); color: #0D0015; }
+  .btn-ghost { background: transparent; color: var(--primary); border: 1px solid var(--divider) !important; }
+  .btn-danger { background: transparent; color: var(--error); border: 1px solid rgba(239,83,80,0.3) !important; }
+  .btn-sm { padding: 4px 10px; font-size: 10px; }
+  .btn-lg { padding: 12px 24px; font-size: 14px; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* ── Toggles ── */
+  .toggle { width: 40px; height: 22px; border-radius: 11px; background: var(--divider); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.on { background: var(--primary); }
+  .toggle::after { content: ''; width: 18px; height: 18px; border-radius: 50%; background: white; position: absolute; top: 2px; left: 2px; transition: transform 0.2s; }
+  .toggle.on::after { transform: translateX(18px); }
+  .toggle.sm { width: 30px; height: 17px; }
+  .toggle.sm::after { width: 13px; height: 13px; top: 2px; left: 2px; }
+  .toggle.sm.on::after { transform: translateX(13px); }
+  .toggle.cyan.on { background: var(--secondary); }
+  .toggle.gold.on { background: var(--tertiary); }
+
+  /* ── Badges ── */
+  .badge { padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; display: inline-block; }
+  .badge-primary { background: rgba(217,70,239,0.15); color: var(--primary); }
+  .badge-secondary { background: rgba(34,211,238,0.15); color: var(--secondary); }
+  .badge-tertiary { background: rgba(251,191,36,0.15); color: var(--tertiary); }
+  .badge-glow { background: rgba(192,132,252,0.15); color: var(--glow); }
+  .badge-error { background: rgba(239,83,80,0.12); color: var(--error); }
+  .badge-surface { background: rgba(255,255,255,0.06); color: var(--on-surface-variant); }
+
+  /* ── Form Fields ── */
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: var(--on-surface-variant); margin-bottom: 4px; font-weight: 500; }
+  .field .value { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--divider); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--on-surface); cursor: pointer; }
+  .field .value .arrow { color: var(--on-surface-variant); font-size: 16px; }
+  .field .value.highlight { color: var(--primary); font-weight: 600; }
+
+  /* ── Tabs ── */
+  .tab-bar { display: flex; border-bottom: 1px solid var(--divider); margin-bottom: 12px; }
+  .tab { padding: 8px 14px; font-size: 11px; color: var(--on-surface-variant); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.15s, border-color 0.15s; }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  .tab:hover { color: var(--on-surface); }
+
+  /* ── Progress Bar ── */
+  .progress-bar { width: 100%; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .progress-fill.primary { background: linear-gradient(90deg,var(--primary),var(--primary-dim),var(--secondary)); }
+  .progress-fill.cyan { background: var(--secondary); }
+  .progress-fill.gold { background: var(--tertiary); }
+
+  /* ── Spinner ── */
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--tertiary); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .spinner.sm { width: 20px; height: 20px; border-width: 2px; }
+  .spinner.primary { border-color: var(--primary); border-top-color: transparent; }
+  .spinner.cyan { border-color: var(--secondary); border-top-color: transparent; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Cards ── */
+  .card { background: var(--surface); border-radius: 14px; border: 1px solid var(--divider); padding: 14px; margin-bottom: 10px; }
+  .card.elevated { box-shadow: 0 4px 16px rgba(217,70,239,0.12); }
+  .card.accent-left { border-left: 4px solid var(--primary); }
+  .card.accent-left.cyan { border-left-color: var(--secondary); }
+  .card.accent-left.gold { border-left-color: var(--tertiary); }
+
+  /* ── Input / Search ── */
+  .input-group { display: flex; align-items: center; gap: 8px; background: var(--surface-variant); border-radius: 10px; padding: 8px 12px; }
+  .input-group input { background: transparent; border: none; color: var(--on-surface); font-size: 13px; outline: none; width: 100%; }
+  .input-group input::placeholder { color: var(--on-surface-variant); opacity: 0.6; }
+
+  /* ── Toast ── */
+  .toast { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--divider); border-radius: 10px; padding: 10px 20px; font-size: 13px; color: var(--on-surface); }
+  .toast.static { margin: 4px 0; }
+
+  /* ── Container Card ── */
+  .container-card { background: var(--surface); border-radius: 14px; border: 1px solid var(--divider); padding: 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; position: relative; overflow: hidden; }
+  .container-card .accent-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 0 2px 2px 0; }
+  .container-card .accent-bar.magenta { background: var(--primary); }
+  .container-card .accent-bar.cyan { background: var(--secondary); }
+  .container-card .accent-bar.gray { background: var(--on-surface-variant); }
+  .container-card .c-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-variant); display: flex; align-items: center; justify-content: center; font-size: 16px; margin-left: 4px; flex-shrink: 0; }
+  .container-card .c-info { flex: 1; }
+  .container-card .c-name { font-size: 13px; font-weight: 600; color: var(--on-surface); }
+  .container-card .c-meta { font-size: 10px; color: var(--on-surface-variant); margin-top: 2px; }
+  .container-card .c-badges { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+
+  /* ── Shortcut Card ── */
+  .sc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .sc { background: var(--surface); border-radius: 10px; border: 1px solid var(--divider); padding: 14px 8px; text-align: center; position: relative; overflow: hidden; }
+  .sc .s-badge { position: absolute; top: 0; right: 0; background: linear-gradient(135deg,var(--primary),var(--secondary)); padding: 2px 6px 2px 8px; border-radius: 0 10px 0 6px; font-size: 7px; font-weight: 800; letter-spacing: 0.5px; color: #0D0015; }
+  .sc .s-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--surface-variant); margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .sc .s-name { font-size: 10px; color: var(--on-surface-variant); }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--divider); margin: 12px 0; }
+  .divider.gradient { background: linear-gradient(90deg,var(--primary),transparent); }
+
+  /* ── Release Card ── */
+  .release { background: var(--surface); border-radius: 12px; border: 1px solid var(--divider); padding: 14px; display: flex; align-items: center; gap: 12px; }
+  .release .ri { flex: 1; }
+  .release .rn { font-size: 14px; font-weight: 600; color: var(--on-surface); }
+  .release .rm { display: flex; gap: 6px; align-items: center; margin-top: 4px; font-size: 11px; color: var(--on-surface-variant); }
+  .release .rm .rt { color: var(--glow); }
+  .release .rb { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+  .rel-badge { padding: 1px 6px; border-radius: 3px; font-size: 7px; font-weight: 800; letter-spacing: 0.5px; }
+  .rel-badge.latest { background: rgba(251,191,36,0.15); color: var(--tertiary); }
+  .rel-badge.rec { background: rgba(34,211,238,0.15); color: var(--secondary); }
+  .rel-badge.inst { background: rgba(217,70,239,0.12); color: var(--primary); }
+
+  /* ── About Row ── */
+  .about-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+  .about-row .nm { font-weight: 500; color: var(--on-surface); }
+  .about-row .ds { font-size: 12px; color: var(--on-surface-variant); }
+
+  /* ── Toggle Row ── */
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--divider); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-row label { font-size: 13px; color: var(--on-surface); }
+  .toggle-row .desc { font-size: 11px; color: var(--on-surface-variant); margin-top: 1px; }
+
+  /* ── HUD Stat Row ── */
+  .hud-stat { display: flex; justify-content: space-between; align-items: center; }
+  .perf-bar { height: 4px; background: var(--divider); border-radius: 2px; overflow: hidden; }
+  .perf-fill { height: 100%; background: linear-gradient(90deg,var(--secondary),var(--primary)); border-radius: 2px; width: 65%; }
+
+  /* ── Preset Mini ── */
+  .preset-row { display: flex; gap: 8px; }
+  .preset-mini { width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--divider); display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--on-surface-variant); position: relative; }
+  .preset-mini.selected { border-color: var(--primary); border-width: 2px; }
+  .preset-mini.vegas { border-color: transparent; background: linear-gradient(var(--surface),var(--surface)) padding-box, linear-gradient(135deg,var(--primary),var(--secondary)) border-box; }
+  .preset-mini .v { position: absolute; top: 0; right: 0; background: var(--primary); color: #0D0015; font-size: 6px; font-weight: 900; padding: 1px 4px; border-radius: 0 6px 0 3px; }
+
+  /* ── Download Items ── */
+  .dl-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--divider); }
+  .dl-item:last-child { border-bottom: none; }
+  .dl-item .dl-icon { width: 28px; text-align: center; font-size: 16px; flex-shrink: 0; }
+  .dl-item .dl-info { flex: 1; }
+  .dl-item .dl-title { font-size: 13px; font-weight: 600; color: var(--on-surface); }
+  .dl-item .dl-sub { font-size: 11px; color: var(--on-surface-variant); margin-top: 1px; }
+
+  @media (min-width: 700px) { body { padding: 24px 48px; } }
+  @media (min-width: 1100px) { .component-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  /* ── Test Controls ── */
+  .test-controls { background: var(--surface); border-radius: 14px; border: 1px solid var(--divider); padding: 16px; margin-bottom: 24px; }
+  .test-controls .toggle-group { display: flex; gap: 16px; flex-wrap: wrap; }
+  .test-controls .toggle-group label { font-size: 12px; color: var(--on-surface); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ===== TITLE ===== -->
+<h1 style="font-size:28px;font-weight:900;letter-spacing:4px;margin-bottom:4px;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent">UI TEST BENCH</h1>
+<p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:16px;">All components in one page — no app build needed. Open in any browser.</p>
+
+<!-- ===== TABLE OF CONTENTS ===== -->
+<div class="toc">
+  <a href="#colors">Colors</a>
+  <a href="#typography">Typography</a>
+  <a href="#buttons">Buttons</a>
+  <a href="#toggles">Toggles</a>
+  <a href="#badges">Badges</a>
+  <a href="#forms">Form Fields</a>
+  <a href="#cards">Cards</a>
+  <a href="#container-cards">Container Cards</a>
+  <a href="#shortcuts">Shortcuts</a>
+  <a href="#progress">Progress</a>
+  <a href="#spinners">Spinners</a>
+  <a href="#tabs">Tabs</a>
+  <a href="#modals">Modals</a>
+  <a href="#releases">Release Cards</a>
+  <a href="#downloads">Download Items</a>
+  <a href="#presets">Presets</a>
+  <a href="#toggle-rows">Toggle Rows</a>
+  <a href="#hud-stats">HUD Stats</a>
+  <a href="#toasts">Toasts</a>
+  <a href="#about-rows">About Rows</a>
+  <a href="#dividers">Dividers</a>
+</div>
+
+<!-- ===== COLORS ===== -->
+<div class="section" id="colors">
+  <div class="section-title">Color Palette</div>
+  <div class="color-swatch">
+    <div class="swatch primary"><span class="name">Primary</span></div>
+    <div class="swatch primary-dim"><span class="name">Prim-Dim</span></div>
+    <div class="swatch secondary"><span class="name">Secondary</span></div>
+    <div class="swatch tertiary"><span class="name">Tertiary</span></div>
+    <div class="swatch glow"><span class="name">Glow</span></div>
+    <div class="swatch surface"><span class="name" style="color:#999">Surface</span></div>
+    <div class="swatch surface-variant"><span class="name" style="color:#999">Surf-Var</span></div>
+    <div class="swatch bg"><span class="name" style="color:#999">BG</span></div>
+    <div class="swatch on-surface"><span class="name" style="color:#333">OnSurf</span></div>
+    <div class="swatch on-surface-variant"><span class="name" style="color:#333">OnSurf-V</span></div>
+    <div class="swatch divider"><span class="name" style="color:#999">Divider</span></div>
+    <div class="swatch outline"><span class="name" style="color:#eee">Outline</span></div>
+    <div class="swatch error"><span class="name">Error</span></div>
+  </div>
+</div>
+
+<!-- ===== TYPOGRAPHY ===== -->
+<div class="section" id="typography">
+  <div class="section-title">Typography</div>
+  <div class="component-card">
+    <div style="font-size:24px;font-weight:900;letter-spacing:3px;margin-bottom:4px">Heading XL (24px/900)</div>
+    <div style="font-size:18px;font-weight:700;letter-spacing:2px;color:var(--primary);margin-bottom:4px">Section Title (18px/700/Primary)</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px">Title Medium (16px/600)</div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">Card Title (14px/600)</div>
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px">Body / Field Values (13px/500)</div>
+    <div style="font-size:11px;color:var(--on-surface-variant);margin-bottom:4px">Caption / Field Labels (11px/variant)</div>
+    <div style="font-size:10px;color:var(--on-surface-variant);margin-bottom:4px">Small Meta / Badge Text (10px/variant)</div>
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--on-surface-variant)">Mini Badge / Tags (9px/uppercase)</div>
+  </div>
+</div>
+
+<!-- ===== BUTTONS ===== -->
+<div class="section" id="buttons">
+  <div class="section-title">Buttons</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Primary</h3>
+      <div class="row"><span class="label">Default</span><button class="btn btn-primary">Primary</button></div>
+      <div class="row"><span class="label">Small</span><button class="btn btn-primary btn-sm">Small</button></div>
+      <div class="row"><span class="label">Large</span><button class="btn btn-primary btn-lg">Large</button></div>
+      <div class="row"><span class="label">Disabled</span><button class="btn btn-primary" disabled>Disabled</button></div>
+      <div class="row"><span class="label">Icon</span><button class="btn btn-primary">⬇ Download</button></div>
+    </div>
+    <div class="component-card">
+      <h3>Secondary / Ghost</h3>
+      <div class="row"><span class="label">Secondary</span><button class="btn btn-secondary">Cyan</button></div>
+      <div class="row"><span class="label">Ghost</span><button class="btn btn-ghost">Ghost</button></div>
+      <div class="row"><span class="label">Ghost Sm</span><button class="btn btn-ghost btn-sm">Small</button></div>
+      <div class="row"><span class="label">Icon</span><button class="btn btn-ghost">ℹ Info</button></div>
+    </div>
+    <div class="component-card">
+      <h3>Danger / Full Width</h3>
+      <div class="row"><span class="label">Danger</span><button class="btn btn-danger">🗑 Delete</button></div>
+      <div class="row"><span class="label">Full Width</span><button class="btn btn-primary" style="width:100%;justify-content:center">Full Width</button></div>
+      <div class="row"><span class="label">FW Ghost</span><button class="btn btn-ghost" style="width:100%;justify-content:center">Cancel</button></div>
+      <div class="row"><span class="label">FW Danger</span><button class="btn btn-danger" style="width:100%;justify-content:center">🗑 Delete Container</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOGGLES ===== -->
+<div class="section" id="toggles">
+  <div class="section-title">Toggles</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Default (Primary)</h3>
+      <div class="row"><span class="label">Off</span><div class="toggle"></div></div>
+      <div class="row"><span class="label">On</span><div class="toggle on"></div></div>
+      <div class="row"><span class="label">Small Off</span><div class="toggle sm"></div></div>
+      <div class="row"><span class="label">Small On</span><div class="toggle sm on"></div></div>
+    </div>
+    <div class="component-card">
+      <h3>Color Variants</h3>
+      <div class="row"><span class="label">Cyan On</span><div class="toggle cyan on"></div></div>
+      <div class="row"><span class="label">Gold On</span><div class="toggle gold on"></div></div>
+      <div class="row"><span class="label">Sm Cyan</span><div class="toggle sm cyan on"></div></div>
+      <div class="row"><span class="label">Sm Gold</span><div class="toggle sm gold on"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BADGES ===== -->
+<div class="section" id="badges">
+  <div class="section-title">Badges</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Variants</h3>
+      <div class="row"><span class="badge badge-primary">VEGAS</span><span class="badge badge-secondary">RECOMMENDED</span></div>
+      <div class="row"><span class="badge badge-tertiary">LATEST</span><span class="badge badge-glow">NEW</span></div>
+      <div class="row"><span class="badge badge-error">ERROR</span><span class="badge badge-surface">INSTALLED</span></div>
+    </div>
+    <div class="component-card">
+      <h3>On Container Cards</h3>
+      <div class="row"><span class="badge badge-primary" style="font-size:8px">VEGAS 2.7.3</span></div>
+      <div class="row"><span class="badge badge-tertiary" style="font-size:8px">BOX64 0.2.8</span></div>
+      <div class="row"><span class="badge badge-surface" style="font-size:8px">DXVK 2.2</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FORM FIELDS ===== -->
+<div class="section" id="forms">
+  <div class="section-title">Form Fields</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Dropdown Fields</h3>
+      <div class="field"><label>Wine Version</label><div class="value" onclick="this.querySelector('.arrow').textContent=this.querySelector('.arrow').textContent==='▼'?'▲':'▼'">Wine 9.0<span class="arrow">▼</span></div></div>
+      <div class="field"><label>DX Wrapper</label><div class="value highlight" onclick="this.querySelector('.arrow').textContent=this.querySelector('.arrow').textContent==='›'?'‹':'›'">VEGAS 2.7.3<span class="arrow">›</span></div></div>
+      <div class="field"><label>Screen Size</label><div class="value" onclick="this.querySelector('.arrow').textContent=this.querySelector('.arrow').textContent==='›'?'‹':'›'">1280×720<span class="arrow">›</span></div></div>
+    </div>
+    <div class="component-card">
+      <h3>Search Input</h3>
+      <div class="input-group"><span style="color:var(--on-surface-variant)">🔍</span><input type="text" placeholder="Search containers..." readonly></div>
+      <div style="height:10px"></div>
+      <div class="input-group"><span style="color:var(--secondary);font-size:13px">⌕</span><input type="text" placeholder="Search games..." readonly value="cyber"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CARDS ===== -->
+<div class="section" id="cards">
+  <div class="section-title">Cards</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Standard Card</h3>
+      <div class="card">Basic card with surface background, 14px radius, divider border.</div>
+    </div>
+    <div class="component-card">
+      <h3>Elevated Card</h3>
+      <div class="card elevated">Same card with magenta glow shadow for emphasis.</div>
+    </div>
+    <div class="component-card">
+      <h3>Accent Left</h3>
+      <div class="card accent-left">4px primary left border.</div>
+      <div class="card accent-left cyan">4px secondary (cyan) left border.</div>
+      <div class="card accent-left gold">4px tertiary (gold) left border.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONTAINER CARDS ===== -->
+<div class="section" id="container-cards">
+  <div class="section-title">Container Cards</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>With VEGAS Wrapper</h3>
+      <div class="container-card" style="cursor:default"><div class="accent-bar magenta"></div><div class="c-icon" style="color:var(--primary)">🎮</div><div class="c-info"><div class="c-name">Main Game Container</div><div class="c-meta">Wine 9.0 · 4.2 GB</div><div class="c-badges"><span class="badge badge-primary" style="font-size:8px">VEGAS 2.7.3</span><span class="badge badge-tertiary" style="font-size:8px">Box64 0.2.8</span></div></div></div>
+    </div>
+    <div class="component-card">
+      <h3>Legacy / Other</h3>
+      <div class="container-card" style="cursor:default"><div class="accent-bar gray"></div><div class="c-icon" style="color:var(--on-surface-variant)">🎮</div><div class="c-info"><div class="c-name">Legacy Winlator</div><div class="c-meta">Wine 8.0 · 3.1 GB</div><div class="c-badges"><span class="badge badge-surface" style="font-size:8px">DXVK 2.2</span></div></div></div>
+    </div>
+    <div class="component-card">
+      <h3>Cyan Accent</h3>
+      <div class="container-card" style="cursor:default"><div class="accent-bar cyan"></div><div class="c-icon" style="color:var(--secondary)">🎮</div><div class="c-info"><div class="c-name">Proton Test</div><div class="c-meta">Proton 8.0 · 2.8 GB</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHORTCUTS ===== -->
+<div class="section" id="shortcuts">
+  <div class="section-title">Shortcut Grid</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>3-column Grid</h3>
+      <div class="sc-grid">
+        <div class="sc"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--glow)">🎮</div><div class="s-name">Cyberpunk 2077</div></div>
+        <div class="sc"><div class="s-icon" style="color:var(--on-surface-variant)">📖</div><div class="s-name">Steam</div></div>
+        <div class="sc"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--primary)">⭐</div><div class="s-name">Starfield</div></div>
+        <div class="sc"><div class="s-icon" style="color:var(--on-surface-variant)">🎲</div><div class="s-name">Epic Games</div></div>
+        <div class="sc"><div class="s-icon" style="color:var(--on-surface-variant)">🕹️</div><div class="s-name">GOG Galaxy</div></div>
+        <div class="sc"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--secondary)">🏎️</div><div class="s-name">Forza 5</div></div>
+      </div>
+    </div>
+    <div class="component-card">
+      <h3>Single Item (detail)</h3>
+      <div class="sc" style="max-width:120px"><div class="s-badge">VEGAS</div><div class="s-icon" style="color:var(--glow)">🎮</div><div class="s-name">Cyberpunk 2077</div></div>
+      <div class="desc" style="margin-top:8px">Left accent bar replaces gray <code>.s-icon</code> background when VEGAS badge present.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PROGRESS ===== -->
+<div class="section" id="progress">
+  <div class="section-title">Progress Bars</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>VEGAS Gradient</h3>
+      <div class="progress-bar"><div class="progress-fill primary" style="width:40%"></div></div>
+      <div class="row" style="margin-top:8px"><span class="label">40%</span><span class="label" style="min-width:0">Loading DXVK...</span></div>
+      <div class="progress-bar" style="margin-top:8px"><div class="progress-fill primary" style="width:75%"></div></div>
+      <div class="row" style="margin-top:8px"><span class="label">75%</span></div>
+      <div class="progress-bar" style="margin-top:8px"><div class="progress-fill primary" style="width:100%"></div></div>
+      <div class="row" style="margin-top:8px"><span class="label">100% — Complete</span></div>
+    </div>
+    <div class="component-card">
+      <h3>Solid Color</h3>
+      <div class="progress-bar"><div class="progress-fill cyan" style="width:60%"></div></div>
+      <div style="margin-top:8px"></div>
+      <div class="progress-bar"><div class="progress-fill gold" style="width:30%"></div></div>
+    </div>
+    <div class="component-card">
+      <h3>Performance Bar</h3>
+      <div class="perf-bar"><div class="perf-fill"></div></div>
+      <div class="row" style="margin-top:6px">
+        <span style="font-size:10px;color:var(--on-surface-variant)">Battery Saver</span>
+        <span style="font-size:10px;color:var(--on-surface-variant)">Balanced</span>
+        <span style="font-size:10px;color:var(--on-surface-variant)">Max</span>
+      </div>
+      <div class="perf-bar" style="margin-top:8px"><div style="height:100%;background:var(--primary);border-radius:2px;width:38%"></div></div>
+      <div class="row" style="margin-top:6px"><span style="font-size:10px;color:var(--on-surface-variant)">12.4 GB used</span><span style="font-size:10px;color:var(--on-surface-variant)">32 GB total</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SPINNERS ===== -->
+<div class="section" id="spinners">
+  <div class="section-title">Spinners</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Variants</h3>
+      <div class="row"><span class="label">Default</span><div class="spinner"></div></div>
+      <div class="row"><span class="label">Small</span><div class="spinner sm"></div></div>
+      <div class="row"><span class="label">Primary</span><div class="spinner primary"></div></div>
+      <div class="row"><span class="label">Cyan</span><div class="spinner cyan"></div></div>
+    </div>
+    <div class="component-card">
+      <h3>In Context</h3>
+      <div style="text-align:center;padding:16px">
+        <div class="spinner" style="margin:0 auto 8px"></div>
+        <div style="font-size:13px;font-weight:600;color:var(--on-surface)">Installing…</div>
+        <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px">Extracting wrapper assets</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TABS ===== -->
+<div class="section" id="tabs">
+  <div class="section-title">Tabs</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Container Detail Tabs</h3>
+      <div class="tab-bar">
+        <div class="tab active">Graphics</div>
+        <div class="tab">Audio</div>
+        <div class="tab">Input</div>
+        <div class="tab">System</div>
+        <div class="tab">About</div>
+      </div>
+      <div class="desc">Click tabs to toggle:</div>
+      <div class="tab-bar" style="margin-top:6px" id="demoTabs">
+        <div class="tab active" onclick="switchDemoTab(this,'g')">Graphics</div>
+        <div class="tab" onclick="switchDemoTab(this,'a')">Audio</div>
+        <div class="tab" onclick="switchDemoTab(this,'i')">Input</div>
+      </div>
+      <div id="tabDemoContent" style="font-size:12px;color:var(--on-surface-variant);margin-top:8px">Content for Graphics tab</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+<div class="section" id="modals">
+  <div class="section-title">Modals</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Modal Strip</h3>
+      <div style="background:var(--surface);border-radius:20px;border:1px solid var(--divider);max-width:320px">
+        <div style="height:6px;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:20px 20px 0 0"></div>
+        <div style="padding:20px;text-align:center">
+          <div style="font-size:14px;font-weight:700;color:var(--on-surface)">Dialog Title</div>
+          <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px">Dialog body content goes here.</div>
+          <button class="btn btn-ghost" style="width:100%;margin-top:12px">Close</button>
+        </div>
+      </div>
+      <div class="desc" style="margin-top:8px">The 6px gradient strip is always at the top of every modal dialog.</div>
+    </div>
+    <div class="component-card">
+      <h3>Installing Modal</h3>
+      <div style="background:var(--surface);border-radius:16px;border:1px solid var(--divider);max-width:220px;text-align:center;padding:28px">
+        <div class="spinner" style="margin:0 auto 12px"></div>
+        <div style="font-size:13px;font-weight:600;color:var(--on-surface)">Installing…</div>
+        <div style="font-size:11px;color:var(--on-surface-variant);margin-top:4px">Extracting assets</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RELEASE CARDS ===== -->
+<div class="section" id="releases">
+  <div class="section-title">Release Cards</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>With Badges</h3>
+      <div class="release"><div class="ri"><div class="rn">VEGAS 2.8.0</div><div class="rb"><span class="rel-badge latest">LATEST</span><span class="rel-badge rec">RECOMMENDED</span></div><div class="rm"><span>v2.8.0</span><span>·</span><span class="rt">VEGAS Wrapper</span></div></div><div><button class="btn btn-primary btn-sm">⬇</button></div></div>
+      <div style="height:8px"></div>
+      <div class="release"><div class="ri"><div class="rn">VEGAS 2.7.3</div><div class="rb"><span class="rel-badge inst">INSTALLED</span></div><div class="rm"><span>v2.7.3</span><span>·</span><span class="rt">VEGAS Wrapper</span></div></div><div><span style="font-size:22px;opacity:0.5;color:var(--primary)">✓</span></div></div>
+    </div>
+    <div class="component-card">
+      <h3>Glow Divider</h3>
+      <div style="height:1px;margin:0 0 10px;background:linear-gradient(90deg,rgba(217,70,239,0.3),rgba(192,132,252,0.3),transparent)"></div>
+      <div class="release"><div class="ri"><div class="rn">VEGAS 2.6.1</div><div class="rm"><span>v2.6.1</span><span>·</span><span class="rt">VEGAS Wrapper</span></div></div><div><button class="btn btn-primary btn-sm">⬇</button></div></div>
+      <div class="desc" style="margin-top:8px">The magenta-cyan-transparent glow divider separates release groups.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DOWNLOAD ITEMS ===== -->
+<div class="section" id="downloads">
+  <div class="section-title">Download Items</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Content Download List</h3>
+      <div class="dl-item"><div class="dl-icon" style="color:var(--glow)">💾</div><div class="dl-info"><div class="dl-title">dxvk-2.3.1</div><div class="dl-sub">Installed · Code 1</div></div><button class="btn btn-ghost btn-sm">ℹ</button></div>
+      <div class="dl-item"><div class="dl-icon" style="color:var(--glow)">💾</div><div class="dl-info"><div class="dl-title">vkd3d-2.12</div><div class="dl-sub">Available</div></div><button class="btn btn-primary btn-sm">⬇ Download</button></div>
+      <div class="dl-item"><div class="dl-icon" style="color:var(--secondary)">🍷</div><div class="dl-info"><div class="dl-title">wine-9.0</div><div class="dl-sub" style="color:var(--tertiary)">Installed</div></div><button class="btn btn-ghost btn-sm">ℹ</button></div>
+      <div class="dl-item"><div class="dl-icon" style="color:var(--on-surface-variant)">💻</div><div class="dl-info"><div class="dl-title">box64-0.2.8</div><div class="dl-sub">2.6 MB</div></div><button class="btn btn-primary btn-sm">⬇</button></div>
+    </div>
+    <div class="component-card">
+      <h3>Type Icons Summary</h3>
+      <div class="row"><span class="label">DXVK/VKD3D</span><span style="font-size:16px;color:var(--glow)">💾</span></div>
+      <div class="row"><span class="label">Wine</span><span style="font-size:16px;color:var(--secondary)">🍷</span></div>
+      <div class="row"><span class="label">Box64</span><span style="font-size:16px;color:var(--on-surface-variant)">💻</span></div>
+      <div class="row"><span class="label">VEGAS</span><span style="font-size:16px;color:var(--primary)">⚡</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PRESETS ===== -->
+<div class="section" id="presets">
+  <div class="section-title">Presets</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>All 8 Presets</h3>
+      <div class="preset-row">
+        <div class="preset-mini" style="background:#1A1A1A"><div style="width:80%;height:4px;background:#2A2A2A;border-radius:2px"></div><div style="width:50%;height:2px;background:#8B6BE0;border-radius:2px;margin-top:2px"></div></div>
+        <div class="preset-mini" style="background:#000"><div style="width:80%;height:4px;background:#0D0D0D;border-radius:2px"></div><div style="width:50%;height:2px;background:#BB86FC;border-radius:2px;margin-top:2px"></div></div>
+        <div class="preset-mini" style="background:#0D1B2A"><div style="width:80%;height:4px;background:#162435;border-radius:2px"></div><div style="width:50%;height:2px;background:#0EA5E9;border-radius:2px;margin-top:2px"></div></div>
+        <div class="preset-mini" style="background:#0D1A12"><div style="width:80%;height:4px;background:#142010;border-radius:2px"></div><div style="width:50%;height:2px;background:#22C55E;border-radius:2px;margin-top:2px"></div></div>
+      </div>
+      <div class="preset-row" style="margin-top:8px">
+        <div class="preset-mini" style="background:#1A0D0D"><div style="width:80%;height:4px;background:#251515;border-radius:2px"></div><div style="width:50%;height:2px;background:#F97316;border-radius:2px;margin-top:2px"></div></div>
+        <div class="preset-mini" style="background:#1A0D14"><div style="width:80%;height:4px;background:#25151E;border-radius:2px"></div><div style="width:50%;height:2px;background:#EC4899;border-radius:2px;margin-top:2px"></div></div>
+        <div class="preset-mini" style="background:#131419"><div style="width:80%;height:4px;background:#1C1D25;border-radius:2px"></div><div style="width:50%;height:2px;background:#64748B;border-radius:2px;margin-top:2px"></div></div>
+        <div class="preset-mini vegas selected"><div class="v">V</div><div style="width:80%;height:4px;background:#1A0A2E;border-radius:2px"></div><div style="width:50%;height:2px;background:#D946EF;border-radius:2px;margin-top:2px"></div></div>
+      </div>
+      <div class="desc" style="margin-top:8px">Last swatch is VEGAS — gradient border, "V" badge, selected state.</div>
+    </div>
+    <div class="component-card">
+      <h3>Selected vs Unselected</h3>
+      <div class="preset-row">
+        <div class="preset-mini selected" style="background:#000;border-width:2px;border-color:var(--primary)"><div style="width:80%;height:4px;background:#0D0D0D;border-radius:2px"></div><div style="width:50%;height:2px;background:#BB86FC;border-radius:2px;margin-top:2px"></div></div>
+        <div class="preset-mini" style="background:#0D1B2A"><div style="width:80%;height:4px;background:#162435;border-radius:2px"></div><div style="width:50%;height:2px;background:#0EA5E9;border-radius:2px;margin-top:2px"></div></div>
+      </div>
+      <div style="font-size:10px;color:var(--on-surface-variant);margin-top:4px">Selected: 2px primary border. Unselected: 1px divider border.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOGGLE ROWS ===== -->
+<div class="section" id="toggle-rows">
+  <div class="section-title">Toggle Rows</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Setting Items</h3>
+      <div class="toggle-row"><div><label>DXGI</label><div class="desc">DirectX Graphics Infrastructure</div></div><div class="toggle on"></div></div>
+      <div class="toggle-row"><div><label>HUD</label><div class="desc">Show in-game overlay</div></div><div class="toggle on"></div></div>
+      <div class="toggle-row"><div><label>VSync</label><div class="desc">Vertical synchronization</div></div><div class="toggle"></div></div>
+      <div class="toggle-row"><div><label>Gamepad</label><div class="desc">Bluetooth gamepad support</div></div><div class="toggle on"></div></div>
+      <div class="toggle-row"><div><label>Mouse Capture</label><div class="desc">Capture pointer for look</div></div><div class="toggle"></div></div>
+    </div>
+    <div class="component-card">
+      <h3>AdrenoTools Toggles</h3>
+      <div class="toggle-row"><div><label>Shader Cache</label><div class="desc">Cache compiled shaders</div></div><div class="toggle on"></div></div>
+      <div class="toggle-row"><div><label>Async Compilation</label><div class="desc">Compile shaders asynchronously</div></div><div class="toggle on"></div></div>
+      <div class="toggle-row"><div><label>Force 32-bit</label><div class="desc">Force 32-bit color depth</div></div><div class="toggle"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HUD STATS ===== -->
+<div class="section" id="hud-stats">
+  <div class="section-title">HUD Stats</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Info Rows</h3>
+      <div class="hud-stat" style="margin-bottom:6px"><span style="font-size:13px;color:var(--on-surface)">Wrapper</span><span style="font-size:12px;color:var(--glow);font-weight:600">VEGAS 2.7.3</span></div>
+      <div class="hud-stat" style="margin-bottom:6px"><span style="font-size:13px;color:var(--on-surface)">DXVK Version</span><span style="font-size:12px;color:var(--on-surface-variant)">2.3.1</span></div>
+      <div class="hud-stat" style="margin-bottom:6px"><span style="font-size:13px;color:var(--on-surface)">Box64 Version</span><span style="font-size:12px;color:var(--on-surface-variant)">0.2.8</span></div>
+      <div class="hud-stat"><span style="font-size:13px;color:var(--on-surface)">Turnip</span><span style="font-size:12px;color:var(--on-surface-variant)">24.1.0</span></div>
+    </div>
+    <div class="component-card">
+      <h3>Performance Card</h3>
+      <div class="hud-stat" style="margin-bottom:8px"><span style="font-size:13px;font-weight:500;color:var(--on-surface)">Performance Mode</span><span style="font-size:12px;color:var(--primary);font-weight:600">VEGAS</span></div>
+      <div class="perf-bar"><div class="perf-fill"></div></div>
+      <div class="hud-stat" style="margin-top:8px"><span style="font-size:13px;color:var(--on-surface)">Driver</span><span style="font-size:12px;color:var(--glow);font-weight:600">Turnip 24.1.0</span></div>
+      <div class="hud-stat" style="margin-top:4px"><span style="font-size:13px;color:var(--on-surface)">Vulkan API</span><span style="font-size:12px;color:var(--on-surface-variant)">1.3.275</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOASTS ===== -->
+<div class="section" id="toasts">
+  <div class="section-title">Toasts</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Messages</h3>
+      <div class="toast static">Screen size</div>
+      <div class="toast static">📦 Container created</div>
+      <div class="toast static">⚠️ Shader cache cleared</div>
+      <div class="toast static">✅ Download complete</div>
+    </div>
+    <div class="component-card">
+      <h3>Position</h3>
+      <div style="background:var(--bg);border-radius:10px;border:1px solid var(--divider);padding:20px;position:relative;height:80px">
+        <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--divider);border-radius:10px;padding:10px 20px;font-size:13px;color:var(--on-surface);white-space:nowrap">Toast at bottom-center</div>
+      </div>
+      <div class="desc" style="margin-top:8px">Toasts appear fixed at bottom-center, 100px from bottom, auto-dismiss in 1.5s.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ABOUT ROWS ===== -->
+<div class="section" id="about-rows">
+  <div class="section-title">About Rows</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Powered By</h3>
+      <div class="about-row"><span class="nm">Wine</span><span class="ds">Windows compatibility layer</span></div>
+      <div class="about-row"><span class="nm">Box64</span><span class="ds">x86_64 emulation on ARM</span></div>
+      <div class="about-row"><span class="nm">VEGAS</span><span class="ds">D3D9/11 → Vulkan</span></div>
+    </div>
+    <div class="component-card">
+      <h3>Credits</h3>
+      <div class="about-row"><span class="nm">brunodev85</span><span class="ds">Winlator</span></div>
+      <div class="about-row"><span class="nm">The412Banner</span><span class="ds">Star-Compose</span></div>
+      <div class="about-row"><span class="nm">VEGAS Team</span><span class="ds">DXVK fork for Android</span></div>
+    </div>
+    <div class="component-card">
+      <h3>Container Info</h3>
+      <div class="about-row"><span class="nm">Wine</span><span class="ds">9.0</span></div>
+      <div class="about-row"><span class="nm">DX Wrapper</span><span class="ds" style="color:var(--primary);font-weight:600">VEGAS 2.7.3</span></div>
+      <div class="about-row"><span class="nm">Total Size</span><span class="ds">4.2 GB</span></div>
+      <div class="about-row"><span class="nm">Last Used</span><span class="ds">2 hours ago</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DIVIDERS ===== -->
+<div class="section" id="dividers">
+  <div class="section-title">Dividers</div>
+  <div class="component-grid">
+    <div class="component-card">
+      <h3>Standard</h3>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:var(--on-surface-variant)">1px solid <code>var(--divider)</code> (#3A1A5E)</div>
+    </div>
+    <div class="component-card">
+      <h3>Gradient</h3>
+      <div class="divider gradient"></div>
+      <div style="font-size:10px;color:var(--on-surface-variant)">1px primary-to-transparent gradient</div>
+    </div>
+    <div class="component-card">
+      <h3>Glow (Magenta-Cyan)</h3>
+      <div style="height:1px;background:linear-gradient(90deg,rgba(217,70,239,0.3),rgba(192,132,252,0.3),transparent)"></div>
+      <div style="font-size:10px;color:var(--on-surface-variant);margin-top:4px">Used in VEGAS Downloads modal between release groups</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchDemoTab(el, id) {
+    document.querySelectorAll('#demoTabs .tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    const contents = { g: 'Graphics settings — Wine, DX Wrapper, DXVK, Box64, Turnip', a: 'Audio settings — PulseAudio, ALSA, sample rate, buffer', i: 'Input settings — touch, gamepad, mouse capture, controller mapping' };
+    document.getElementById('tabDemoContent').textContent = 'Content for ' + contents[id] || id;
+  }
+</script>
+
+</body>
+</html>
