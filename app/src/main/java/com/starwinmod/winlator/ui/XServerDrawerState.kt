@@ -41,18 +41,23 @@ object XServerDrawerState {
 
     // LSFG runtime settings (shared with Graphics Engine overlay)
     private val _lsfgMultiplier  = MutableStateFlow(2)
+    @get:JvmName("getLsfgMultiplierState")
     val lsfgMultiplier: StateFlow<Int> = _lsfgMultiplier
 
     private val _lsfgQuality     = MutableStateFlow("balanced")
+    @get:JvmName("getLsfgQualityState")
     val lsfgQuality: StateFlow<String> = _lsfgQuality
 
     private val _lsfgFlowScale   = MutableStateFlow(100)
+    @get:JvmName("getLsfgFlowScaleState")
     val lsfgFlowScale: StateFlow<Int> = _lsfgFlowScale
 
     private val _lsfgMaxLatency  = MutableStateFlow(16)
+    @get:JvmName("getLsfgMaxLatencyState")
     val lsfgMaxLatency: StateFlow<Int> = _lsfgMaxLatency
 
     private val _lsfgGpuArch     = MutableStateFlow("auto")
+    @get:JvmName("getLsfgGpuArchState")
     val lsfgGpuArch: StateFlow<String> = _lsfgGpuArch
 
     private val _fpsExpanded = MutableStateFlow(false)

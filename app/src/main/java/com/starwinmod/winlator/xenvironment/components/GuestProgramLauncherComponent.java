@@ -59,6 +59,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private final ContentProfile wineProfile;
     private Container container;
     private final Shortcut shortcut;
+    private static final String TAG = "GuestProgramLauncherComponent";
+
 
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
