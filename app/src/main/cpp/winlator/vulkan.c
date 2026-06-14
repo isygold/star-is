@@ -44,7 +44,7 @@ static char *get_native_library_dir(JNIEnv *env, jobject context) {
     char *native_libdir;
 
     if (context != NULL) {
-        jclass class_ = (*env)->FindClass(env,"com/winlator/star/core/AppUtils");
+        jclass class_ = (*env)->FindClass(env,"com/starwinmod/winlator/core/AppUtils");
         jmethodID getNativeLibraryDir = (*env)->GetStaticMethodID(env, class_, "getNativeLibDir",
                                                                "(Landroid/content/Context;)Ljava/lang/String;");
         jstring nativeLibDir = (jstring)(*env)->CallStaticObjectMethod(env, class_,
@@ -81,7 +81,7 @@ static char *get_driver_path(JNIEnv *env, jobject context, const char *driver_na
 static char *get_library_name(JNIEnv *env, jobject context, const char *driver_name) {
     char *library_name;
 
-    jclass adrenotoolsManager = (*env)->FindClass(env, "com/winlator/star/contents/AdrenotoolsManager");
+    jclass adrenotoolsManager = (*env)->FindClass(env, "com/starwinmod/winlator/contents/AdrenotoolsManager");
     jmethodID constructor = (*env)->GetMethodID(env, adrenotoolsManager, "<init>", "(Landroid/content/Context;)V");
     jobject  adrenotoolsManagerObj = (*env)->NewObject(env, adrenotoolsManager, constructor, context);
     jmethodID getLibraryName = (*env)->GetMethodID(env, adrenotoolsManager, "getLibraryName","(Ljava/lang/String;)Ljava/lang/String;");
@@ -204,7 +204,7 @@ static VkResult enumerate_physical_devices() {
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_winlator_star_core_GPUInformation_getVulkanVersion(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+Java_com_starwinmod_winlator_core_GPUInformation_getVulkanVersion(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = sigill_handler;
@@ -249,7 +249,7 @@ Java_com_winlator_star_core_GPUInformation_getVulkanVersion(JNIEnv *env, jclass 
 }
 
 JNIEXPORT jint JNICALL
-Java_com_winlator_star_core_GPUInformation_getVendorID(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+Java_com_starwinmod_winlator_core_GPUInformation_getVendorID(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = sigill_handler;
@@ -292,7 +292,7 @@ Java_com_winlator_star_core_GPUInformation_getVendorID(JNIEnv *env, jclass obj, 
 
 
 JNIEXPORT jstring JNICALL
-Java_com_winlator_star_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+Java_com_starwinmod_winlator_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = sigill_handler;
@@ -334,7 +334,7 @@ Java_com_winlator_star_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj, 
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_com_winlator_star_core_GPUInformation_enumerateExtensions(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+Java_com_starwinmod_winlator_core_GPUInformation_enumerateExtensions(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = sigill_handler;
