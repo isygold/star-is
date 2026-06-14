@@ -27,6 +27,7 @@ import com.starwinmod.winlator.core.WineInfo;
 import com.starwinmod.winlator.fexcore.FEXCoreManager;
 import com.starwinmod.winlator.fexcore.FEXCorePreset;
 import com.starwinmod.winlator.fexcore.FEXCorePresetManager;
+import com.starwinmod.winlator.lsfg.LsfgConfig;
 import com.starwinmod.winlator.lsfg.LsfgManager;
 import com.starwinmod.winlator.xconnector.UnixSocketConfig;
 import com.starwinmod.winlator.xenvironment.EnvironmentComponent;

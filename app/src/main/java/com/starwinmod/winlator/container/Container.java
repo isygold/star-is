@@ -12,6 +12,7 @@ import com.starwinmod.winlator.core.KeyValueSet;
 import com.starwinmod.winlator.core.WineInfo;
 import com.starwinmod.winlator.core.WineThemeManager;
 import com.starwinmod.winlator.fexcore.FEXCorePreset;
+import com.starwinmod.winlator.lsfg.LsfgConfig;
 import com.starwinmod.winlator.winhandler.WinHandler;
 import com.starwinmod.winlator.xenvironment.ImageFs;
 
@@ -445,6 +446,30 @@ public Container(int id) {
     public void setLsfgCustomDllEnabled(boolean enabled) { this.lsfgCustomDllEnabled = enabled; }
     public String getLsfgCustomDllPath() { return lsfgCustomDllPath; }
     public void setLsfgCustomDllPath(String path) { this.lsfgCustomDllPath = path != null ? path : ""; }
+
+    /** @return All LSFG settings as an immutable [LsfgConfig]. */
+    public LsfgConfig getLsfgConfig() {
+        return new LsfgConfig(
+            lsfgMultiplier,
+            lsfgQuality,
+            lsfgFlowScale,
+            lsfgMaxLatency,
+            lsfgGpuArch,
+            lsfgCustomDllEnabled,
+            lsfgCustomDllPath
+        );
+    }
+
+    /** Apply all LSFG settings from an [LsfgConfig] at once. */
+    public void setLsfgConfig(LsfgConfig cfg) {
+        this.lsfgMultiplier = cfg.getMultiplier();
+        this.lsfgQuality = cfg.getQuality();
+        this.lsfgFlowScale = cfg.getFlowScale();
+        this.lsfgMaxLatency = cfg.getMaxLatency();
+        this.lsfgGpuArch = cfg.getGpuArch();
+        this.lsfgCustomDllEnabled = cfg.isCustomDllEnabled();
+        this.lsfgCustomDllPath = cfg.getCustomDllPath();
+    }
 
     public Iterable<String[]> drivesIterator() {
         return drivesIterator(drives);

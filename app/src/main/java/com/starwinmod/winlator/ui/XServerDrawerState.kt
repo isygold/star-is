@@ -32,33 +32,8 @@ object XServerDrawerState {
     private val _showMagnifier           = MutableStateFlow(true)
     val showMagnifier: StateFlow<Boolean> = _showMagnifier
 
-    private val _lsfgEnabled              = MutableStateFlow(false)
-    @get:JvmName("getLsfgEnabledState")
-    val lsfgEnabled: StateFlow<Boolean>   = _lsfgEnabled
-
     private val _cursorExpanded          = MutableStateFlow(false)
     val cursorExpanded: StateFlow<Boolean> = _cursorExpanded
-
-    // LSFG runtime settings (shared with Graphics Engine overlay)
-    private val _lsfgMultiplier  = MutableStateFlow(2)
-    @get:JvmName("getLsfgMultiplierState")
-    val lsfgMultiplier: StateFlow<Int> = _lsfgMultiplier
-
-    private val _lsfgQuality     = MutableStateFlow("balanced")
-    @get:JvmName("getLsfgQualityState")
-    val lsfgQuality: StateFlow<String> = _lsfgQuality
-
-    private val _lsfgFlowScale   = MutableStateFlow(100)
-    @get:JvmName("getLsfgFlowScaleState")
-    val lsfgFlowScale: StateFlow<Int> = _lsfgFlowScale
-
-    private val _lsfgMaxLatency  = MutableStateFlow(16)
-    @get:JvmName("getLsfgMaxLatencyState")
-    val lsfgMaxLatency: StateFlow<Int> = _lsfgMaxLatency
-
-    private val _lsfgGpuArch     = MutableStateFlow("auto")
-    @get:JvmName("getLsfgGpuArchState")
-    val lsfgGpuArch: StateFlow<String> = _lsfgGpuArch
 
     private val _fpsExpanded = MutableStateFlow(false)
     val fpsExpanded: StateFlow<Boolean> = _fpsExpanded
@@ -83,12 +58,9 @@ object XServerDrawerState {
     @JvmField var onMagnifier:              Runnable? = null
     @JvmField var onLogs:                   Runnable? = null
     @JvmField var onExit:                   Runnable? = null
-    @JvmField var onLsfgToggle:             Runnable? = null
     @JvmField var onMoveCursorToTouchpoint: Runnable? = null
     @JvmField var onRelativeMouseMovement:  Runnable? = null
     @JvmField var onDisableMouse:           Runnable? = null
-    @JvmField var onApplyLsfg:             Runnable? = null
-    @JvmField var onResetLsfg:             Runnable? = null
     @JvmField var onFpsConfigApply: XServerDialogState.FpsConfigCallback? = null
     var onCursorExpandedChanged: ((Boolean) -> Unit)? = null
 
@@ -99,19 +71,7 @@ object XServerDrawerState {
     fun setMoveCursorToTouchpoint(v: Boolean)  { _moveCursorToTouchpoint.value = v }
     fun setShowLogs(v: Boolean)                { _showLogs.value = v }
     fun setShowMagnifier(v: Boolean)           { _showMagnifier.value = v }
-    fun setLsfgEnabled(v: Boolean)              { _lsfgEnabled.value = v }
-    fun getLsfgEnabled(): Boolean = _lsfgEnabled.value
     fun setCursorExpanded(v: Boolean)          { _cursorExpanded.value = v }
-    fun setLsfgMultiplier(v: Int)       { _lsfgMultiplier.value = v }
-    fun setLsfgQuality(v: String)       { _lsfgQuality.value = v }
-    fun setLsfgFlowScale(v: Int)        { _lsfgFlowScale.value = v }
-    fun setLsfgMaxLatency(v: Int)       { _lsfgMaxLatency.value = v }
-    fun setLsfgGpuArch(v: String)       { _lsfgGpuArch.value = v }
-    fun getLsfgMultiplier(): Int         = _lsfgMultiplier.value
-    fun getLsfgQuality(): String         = _lsfgQuality.value
-    fun getLsfgFlowScale(): Int          = _lsfgFlowScale.value
-    fun getLsfgMaxLatency(): Int         = _lsfgMaxLatency.value
-    fun getLsfgGpuArch(): String         = _lsfgGpuArch.value
 
     fun toggleCursorExpanded() {
         val next = !_cursorExpanded.value
@@ -123,6 +83,48 @@ object XServerDrawerState {
     fun setFpsConfig(v: String) { _fpsConfig.value = v }
     fun toggleFpsExpanded() { _fpsExpanded.value = !_fpsExpanded.value }
 
+
+    // ── LSFG delegation (backed by LsfgState.Global) ─────────────────────────
+    // These methods are kept for backward compatibility; new code should use
+    // LsfgState.Global directly.
+
+    @Deprecated("Use LsfgState.Global.setEnabled()", ReplaceWith("LsfgState.Global.setEnabled(v)"))
+    fun setLsfgEnabled(v: Boolean) { LsfgState.Global.setEnabled(v) }
+
+    @Deprecated("Use LsfgState.Global.snapshot().multiplier", ReplaceWith("LsfgState.Global.getLsfgMultiplier()"))
+    fun getLsfgEnabled(): Boolean = LsfgState.Global.getLsfgEnabled()
+
+    @Deprecated("Use LsfgState.Global.setMultiplier()", ReplaceWith("LsfgState.Global.setMultiplier(v)"))
+    fun setLsfgMultiplier(v: Int) { LsfgState.Global.setMultiplier(v) }
+
+    @Deprecated("Use LsfgState.Global.getLsfgMultiplier()", ReplaceWith("LsfgState.Global.getLsfgMultiplier()"))
+    fun getLsfgMultiplier(): Int = LsfgState.Global.getLsfgMultiplier()
+
+    @Deprecated("Use LsfgState.Global.setQuality()", ReplaceWith("LsfgState.Global.setQuality(v)"))
+    fun setLsfgQuality(v: String) { LsfgState.Global.setQuality(v) }
+
+    @Deprecated("Use LsfgState.Global.getLsfgQuality()", ReplaceWith("LsfgState.Global.getLsfgQuality()"))
+    fun getLsfgQuality(): String = LsfgState.Global.getLsfgQuality()
+
+    @Deprecated("Use LsfgState.Global.setFlowScale()", ReplaceWith("LsfgState.Global.setFlowScale(v)"))
+    fun setLsfgFlowScale(v: Int) { LsfgState.Global.setFlowScale(v) }
+
+    @Deprecated("Use LsfgState.Global.getLsfgFlowScale()", ReplaceWith("LsfgState.Global.getLsfgFlowScale()"))
+    fun getLsfgFlowScale(): Int = LsfgState.Global.getLsfgFlowScale()
+
+    @Deprecated("Use LsfgState.Global.setMaxLatency()", ReplaceWith("LsfgState.Global.setMaxLatency(v)"))
+    fun setLsfgMaxLatency(v: Int) { LsfgState.Global.setMaxLatency(v) }
+
+    @Deprecated("Use LsfgState.Global.getLsfgMaxLatency()", ReplaceWith("LsfgState.Global.getLsfgMaxLatency()"))
+    fun getLsfgMaxLatency(): Int = LsfgState.Global.getLsfgMaxLatency()
+
+    @Deprecated("Use LsfgState.Global.setGpuArch()", ReplaceWith("LsfgState.Global.setGpuArch(v)"))
+    fun setLsfgGpuArch(v: String) { LsfgState.Global.setGpuArch(v) }
+
+    @Deprecated("Use LsfgState.Global.getLsfgGpuArch()", ReplaceWith("LsfgState.Global.getLsfgGpuArch()"))
+    fun getLsfgGpuArch(): String = LsfgState.Global.getLsfgGpuArch()
+
+
     fun reset() {
         _selectedTab.value = TabType.GRAPHICS
         _isPaused.value = false
@@ -131,12 +133,7 @@ object XServerDrawerState {
         _moveCursorToTouchpoint.value = false
         _showLogs.value = false
         _showMagnifier.value = true
-        _lsfgEnabled.value = false
-        _lsfgMultiplier.value = 2
-        _lsfgQuality.value = "balanced"
-        _lsfgFlowScale.value = 100
-        _lsfgMaxLatency.value = 16
-        _lsfgGpuArch.value = "auto"
+
         _cursorExpanded.value = false
         _fpsExpanded.value = false
         _fpsConfig.value = ""
@@ -146,7 +143,7 @@ object XServerDrawerState {
         onActiveWindows = null; onTaskManager = null; onMagnifier = null
         onLogs = null; onExit = null; onLsfgToggle = null; onMoveCursorToTouchpoint = null
         onRelativeMouseMovement = null; onDisableMouse = null
-        onApplyLsfg = null; onResetLsfg = null; onFpsConfigApply = null
+        onFpsConfigApply = null
         onCursorExpandedChanged = null
     }
 }
