@@ -131,7 +131,7 @@ public class LsfgManager {
             FileUtils.chmod(dest, 0644);
             Log.d(TAG, "Installed custom DLL from " + dllFile.getPath() + " to " + dest);
             return dest.isFile();
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Failed to install custom DLL: " + e.getMessage());
             return false;
         }
