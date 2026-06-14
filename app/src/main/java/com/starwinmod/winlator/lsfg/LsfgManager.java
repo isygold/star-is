@@ -99,7 +99,7 @@ public class LsfgManager {
                 Log.e(TAG, "LSFG layer installation incomplete");
                 return false;
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Failed to install LSFG layer: " + e.getMessage());
             return false;
         }
