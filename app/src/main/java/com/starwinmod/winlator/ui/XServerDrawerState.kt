@@ -2,6 +2,7 @@ package com.starwinmod.winlator.ui
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.starwinmod.winlator.lsfg.LsfgState
 
 enum class TabType {
     GRAPHICS, HUD, CONTROLS, ADVANCED, TASK_MANAGER
@@ -63,6 +64,9 @@ object XServerDrawerState {
     @JvmField var onDisableMouse:           Runnable? = null
     @JvmField var onFpsConfigApply: XServerDialogState.FpsConfigCallback? = null
     var onCursorExpandedChanged: ((Boolean) -> Unit)? = null
+    @JvmField var onLsfgToggle: Runnable? = null
+    @JvmField var onApplyLsfg: Runnable? = null
+    @JvmField var onResetLsfg: Runnable? = null
 
     // Setters called from Java
     fun setIsPaused(v: Boolean)                { _isPaused.value = v }

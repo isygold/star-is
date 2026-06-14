@@ -1,12 +1,36 @@
 package com.starwinmod.winlator.lsfg
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,28 +42,18 @@ import com.starwinmod.winlator.ui.theme.PrimaryDim
 /**
  * Self-contained settings panel for the LSFG (Vegas FrameGen) feature.
  *
- * Renders a toggle to enable/disable frame generation, plus configurable
- * parameters: multiplier, quality, flow scale, max input latency, and
- * custom lossless.dll support.
+ * Renders a master toggle and the relevant parameter controls.
  *
- * Usage:
- * ```kotlin
- * LsfgSettingsPanel(
- *     config = lsfgConfig,
- *     onToggle = { enabled -> ... },
- *     onChange = { newConfig -> ... },
- *     onReset = { ... }
- * )
- * ```
- *
+ * @param enabled       Whether frame generation is currently turned on.
  * @param config        Current [LsfgConfig].
- * @param onToggle      Called when the master toggle is switched.
- * @param onChange      Called with a new [LsfgConfig] when any parameter changes.
+ * @param onToggle      Called with the new enabled state.
+ * @param onChange      Called with a full [LsfgConfig] when any parameter changes.
  * @param onReset       Called when "Reset to Defaults" is pressed.
- * @param modifier      Optional [Modifier].
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LsfgSettingsPanel(
+    enabled: Boolean,
     config: LsfgConfig,
     onToggle: (Boolean) -> Unit,
     onChange: (LsfgConfig) -> Unit,
@@ -53,12 +67,12 @@ fun LsfgSettingsPanel(
         ToggleRow(
             label = "Enable Frame Generation",
             subtitle = "Multi-frame interpolation via LSFG Vulkan layer",
-            checked = config.multiplier > 0,
+            checked = enabled,
             onCheckedChange = onToggle
         )
 
         // ── Parameters (only shown when enabled) ─────────────────────────
-        if (config.multiplier > 0) {
+        if (enabled) {
             Spacer(Modifier.height(8.dp))
 
             Text(
@@ -70,7 +84,6 @@ fun LsfgSettingsPanel(
             )
             Spacer(Modifier.height(4.dp))
 
-            // Multiplier
             LsfgDropdown(
                 label = "Multiplier",
                 options = listOf("2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x"),
@@ -80,7 +93,6 @@ fun LsfgSettingsPanel(
                 onChange(config.copy(multiplier = num))
             }
 
-            // Quality
             LsfgDropdown(
                 label = "Quality",
                 options = listOf("performance", "balanced", "quality"),
@@ -100,7 +112,6 @@ fun LsfgSettingsPanel(
             )
             Spacer(Modifier.height(4.dp))
 
-            // Flow Scale
             LsfgSlider(
                 label = "Flow Scale",
                 value = config.flowScale.toFloat(),
@@ -109,7 +120,6 @@ fun LsfgSettingsPanel(
                 format = { "${it.toInt()}%" }
             )
 
-            // Max Input Latency
             LsfgSlider(
                 label = "Max Input Latency",
                 value = config.maxLatency.toFloat(),
@@ -119,8 +129,6 @@ fun LsfgSettingsPanel(
             )
 
             Spacer(Modifier.height(6.dp))
-
-            // ── Custom DLL section ───────────────────────────────────────
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier.padding(vertical = 4.dp)
@@ -154,12 +162,9 @@ fun LsfgSettingsPanel(
 
             Spacer(Modifier.height(8.dp))
 
-            // ── Reset button ─────────────────────────────────────────────
             Button(
                 onClick = onReset,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
+                modifier = Modifier.fillMaxWidth().height(42.dp),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryDim,
@@ -239,26 +244,17 @@ private fun LsfgDropdown(
     onSelect: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it }
-    ) {
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
             value = selectedOption,
             onValueChange = {},
             readOnly = true,
             label = { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(),
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
             singleLine = true
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { opt ->
                 DropdownMenuItem(
                     text = { Text(opt) },

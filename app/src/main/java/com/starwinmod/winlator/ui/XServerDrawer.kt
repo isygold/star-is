@@ -69,6 +69,9 @@ import com.starwinmod.winlator.ui.theme.GlowPurple
 import com.starwinmod.winlator.ui.theme.Primary
 import com.starwinmod.winlator.ui.theme.PrimaryDim
 import com.starwinmod.winlator.ui.theme.WinlatorTheme
+import com.starwinmod.winlator.lsfg.LsfgConfig
+import com.starwinmod.winlator.lsfg.LsfgSettingsPanel
+import com.starwinmod.winlator.lsfg.LsfgState
 import kotlinx.coroutines.delay
 
 fun setupComposeView(view: ComposeView) {
@@ -484,8 +487,12 @@ private fun GraphicsContent(state: XServerDrawerState) {
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(vertical = 6.dp))
 
     // ── Vegas FrameGen (LSFG) ──────────────────────────────────────────
+    val lsfgConfig by lsfgState.config.collectAsState()
+    val lsfgEnabled by lsfgState.enabled.collectAsState()
+
     LsfgSettingsPanel(
-        config = lsfgState.snapshot(),
+        enabled = lsfgEnabled,
+        config = lsfgConfig,
         onToggle = { enabled ->
             lsfgState.setEnabled(enabled)
             state.onLsfgToggle?.run()
