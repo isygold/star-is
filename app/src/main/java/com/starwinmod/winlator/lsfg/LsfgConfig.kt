@@ -1,5 +1,7 @@
 package com.starwinmod.winlator.lsfg
 
+import kotlin.jvm.JvmName
+
 /**
  * Immutable configuration for the LSFG (Lossless Scaling Frame Generation) layer.
  *
@@ -20,6 +22,7 @@ data class LsfgConfig(
     val flowScale: Int = 100,
     val maxLatency: Int = 16,
     val gpuArch: String = "auto",
+    @get:JvmName("isCustomDllEnabled")
     val customDllEnabled: Boolean = false,
     val customDllPath: String = ""
 ) {
