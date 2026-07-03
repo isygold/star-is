@@ -3,6 +3,7 @@ package com.starwinmod.winlator.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import android.view.ContextThemeWrapper
 import android.os.Environment
 import android.provider.DocumentsContract
@@ -19,7 +20,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.Refresh
+
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +38,7 @@ import com.starwinmod.winlator.R
 import com.starwinmod.winlator.contentdialog.DXVKConfigDialog
 import com.starwinmod.winlator.contentdialog.WineD3DConfigDialog
 import com.starwinmod.winlator.contents.AdrenotoolsManager
+import com.starwinmod.winlator.contents.ContentProfile
 import com.starwinmod.winlator.contents.ContentsManager
 import com.starwinmod.winlator.core.AppUtils
 import com.starwinmod.winlator.core.DefaultVersion
@@ -44,6 +46,7 @@ import com.starwinmod.winlator.core.FileUtils
 import com.starwinmod.winlator.core.GPUInformation
 import com.starwinmod.winlator.core.StringUtils
 import com.starwinmod.winlator.core.WineThemeManager
+import java.util.concurrent.Executors
 import androidx.compose.foundation.lazy.items
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -72,7 +75,6 @@ fun ContainerDetailScreen(
     var showBox64DownloadSheet   by remember { mutableStateOf(false) }
     var showFexCoreDownloadSheet by remember { mutableStateOf(false) }
     var showDxvkDownloadSheet    by remember { mutableStateOf(false) }
-    var showVegasDownloadSheet   by remember { mutableStateOf(false) }
     var showVkd3dDownloadSheet   by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
@@ -185,7 +187,7 @@ fun ContainerDetailScreen(
             initialConfig = viewModel.dxWrapperConfig,
             onConfirm = { newConfig -> viewModel.dxWrapperConfig = newConfig; showDxvkConfig = false },
             onDismiss = { showDxvkConfig = false },
-            onDownloadDxvk = { if (isVegasWrapper) showVegasDownloadSheet = true else showDxvkDownloadSheet = true },
+            onDownloadDxvk = { showDxvkDownloadSheet = true },
             onDownloadVkd3d = { showVkd3dDownloadSheet = true },
             refreshTrigger = dialogRefreshTrigger,
         )
@@ -241,12 +243,6 @@ fun ContainerDetailScreen(
         ContentDownloadSheet(
             contentType = com.starwinmod.winlator.contents.ContentProfile.ContentType.CONTENT_TYPE_VKD3D,
             onDismiss = { showVkd3dDownloadSheet = false },
-            onContentChanged = { dialogRefreshTrigger++ }
-        )
-    }
-    if (showVegasDownloadSheet) {
-        VegasDownloadSheet(
-            onDismiss = { showVegasDownloadSheet = false },
             onContentChanged = { dialogRefreshTrigger++ }
         )
     }
@@ -1375,14 +1371,9 @@ internal fun DxvkConfigDialog(
     val allDxvkVersions = remember { mutableStateOf(listOf<String>()) }
     val vkd3dVersions   = remember { mutableStateOf(listOf<String>()) }
     val configSourceEntries = remember { mutableStateOf(listOf<String>()) }
+    var localRefreshTrigger by remember { mutableIntStateOf(0) }
 
-    var refreshKey by remember { mutableIntStateOf(0) }
-    var isRefreshing by remember { mutableStateOf(false) }
-    var showCustomVersion by remember { mutableStateOf(false) }
-    var customVersionText by remember { mutableStateOf("") }
-
-    LaunchedEffect(refreshKey + refreshTrigger) {
-        isRefreshing = true
+    LaunchedEffect(refreshTrigger + localRefreshTrigger) {
         withContext(Dispatchers.IO) {
             val cm = ContentsManager(context)
             cm.syncContents()
@@ -1393,14 +1384,6 @@ internal fun DxvkConfigDialog(
                 else
                     DXVKConfigDialog.loadDxvkVersionList(context, cm, isArm64EC)
                 )
-
-                // On user-initiated refresh, also fetch remote VEGAS releases
-                if (refreshKey > 0 && isVegas) {
-                    val remote = DXVKConfigDialog.fetchVegasVersionsFromGitHub()
-                    for (v in remote) {
-                        if (!contains(v)) add(v)
-                    }
-                }
             }
 
             val vkd3d = DXVKConfigDialog.loadVkd3dVersionList(context, cm)
@@ -1409,7 +1392,6 @@ internal fun DxvkConfigDialog(
                 allDxvkVersions.value = versions
                 vkd3dVersions.value = vkd3d
                 configSourceEntries.value = cfgsrc
-                isRefreshing = false
             }
         }
     }
@@ -1468,57 +1450,59 @@ internal fun DxvkConfigDialog(
                         allDxvkVersions.value, selectedDxvk, { selectedDxvk = it },
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(
-                        onClick = { refreshKey++ },
-                        modifier = Modifier.size(40.dp),
-                        enabled = !isRefreshing
-                    ) {
-                        if (isRefreshing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(
-                                Icons.Default.Refresh,
-                                contentDescription = "Check for Updates",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                    if (isVegas) {
+                        // File picker for manual .wcp install
+                        val vegasFilePicker = rememberLauncherForActivityResult(
+                            contract = ActivityResultContracts.OpenDocument()
+                        ) { uri: Uri? ->
+                            if (uri == null) return@rememberLauncherForActivityResult
+                            val activity = context as? androidx.appcompat.app.AppCompatActivity ?: return@rememberLauncherForActivityResult
+                            val cm = ContentsManager(context)
+                            Executors.newSingleThreadExecutor().execute {
+                                cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
+                                    var phase = 0
+                                    override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                                        activity.runOnUiThread {
+                                            Toast.makeText(context, "Install failed: $reason", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                    override fun onSucceed(profile: ContentProfile) {
+                                        if (phase == 0) {
+                                            phase = 1
+                                            cm.finishInstallContent(profile, this)
+                                        } else {
+                                            cm.applyContent(profile)
+                                            cm.syncContents()
+                                            activity.runOnUiThread {
+                                                val ver = profile.verName?.removePrefix("vegas-") ?: "unknown"
+                                                Toast.makeText(context, "vegas $ver installed successfully", Toast.LENGTH_SHORT).show()
+                                                localRefreshTrigger++
+                                            }
+                                        }
+                                    }
+                                })
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = { vegasFilePicker.launch(arrayOf("*/*")) },
+                            modifier = Modifier.size(40.dp),
+                            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = "Install local .wcp", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onDownloadDxvk,
+                            modifier = Modifier.size(40.dp),
+                            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "Download DXVK", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
-                    OutlinedButton(
-                        onClick = onDownloadDxvk,
-                        modifier = Modifier.size(40.dp),
-                        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(0.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Download DXVK", tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                // ── Manual version entry ──
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = showCustomVersion,
-                        onCheckedChange = { showCustomVersion = it }
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "Manual Version",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (showCustomVersion) {
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = customVersionText,
-                        onValueChange = { customVersionText = it },
-                        label = { Text("Enter version (e.g. 2.7.4)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 if (dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) {
@@ -1550,9 +1534,7 @@ internal fun DxvkConfigDialog(
         confirmButton = {
             TextButton(onClick = {
                 val cfg = DXVKConfigDialog.parseConfig(initialConfig)
-                cfg.put("version",
-                    if (showCustomVersion && customVersionText.isNotBlank()) customVersionText.trim()
-                    else selectedDxvk)
+                cfg.put("version", selectedDxvk)
                 cfg.put("framerate", StringUtils.parseNumber(selectedFramerate))
                 cfg.put("async", if (asyncEnabled && dxvkType != DXVKConfigDialog.DXVK_TYPE_NONE) "1" else "0")
                 cfg.put("asyncCache", if (asyncCacheEnabled && dxvkType == DXVKConfigDialog.DXVK_TYPE_GPLASYNC) "1" else "0")
