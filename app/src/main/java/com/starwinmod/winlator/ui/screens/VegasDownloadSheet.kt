@@ -3,6 +3,7 @@ package com.starwinmod.winlator.ui.screens
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -358,6 +359,7 @@ private fun VegasReleaseCard(
     onDownload: () -> Unit,
 ) {
     val versionNum = release.tagName.removePrefix("v")
+    val context = LocalContext.current
 
     androidx.compose.material3.Surface(
         shape = RoundedCornerShape(12.dp),
@@ -466,12 +468,20 @@ private fun VegasReleaseCard(
 
             // Download button
             if (isInstalled) {
-                Icon(
-                    Icons.Filled.DownloadDone,
-                    contentDescription = "Installed",
-                    tint = Primary.copy(alpha = 0.5f),
-                    modifier = Modifier.size(28.dp),
-                )
+                IconButton(onClick = {
+                    Toast.makeText(
+                        context,
+                        "vegas $versionNum exists and is installed already",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }) {
+                    Icon(
+                        Icons.Filled.DownloadDone,
+                        contentDescription = "Installed",
+                        tint = Primary.copy(alpha = 0.5f),
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
             } else if (isDownloading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
@@ -547,9 +557,11 @@ private fun installWcp(
                 if (phase == 0) {
                     phase = 1
                     cm.finishInstallContent(profile, this)
-                } else {
-                    activity.runOnUiThread { onDone(true, null) }
-                }
+            } else {
+                // Phase 1: finishInstallContent() has completed, now deploy to container imagefs
+                cm.applyContent(profile)
+                activity.runOnUiThread { onDone(true, null) }
+            }
             }
         })
     }
