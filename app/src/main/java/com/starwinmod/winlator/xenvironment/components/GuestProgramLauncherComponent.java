@@ -23,6 +23,7 @@ import com.starwinmod.winlator.core.GPUInformation;
 import com.starwinmod.winlator.core.KeyValueSet;
 import com.starwinmod.winlator.core.ProcessHelper;
 import com.starwinmod.winlator.core.TarCompressorUtils;
+import com.starwinmod.winlator.core.DefaultVersion;
 import com.starwinmod.winlator.core.WineInfo;
 import com.starwinmod.winlator.fexcore.FEXCoreManager;
 import com.starwinmod.winlator.fexcore.FEXCorePreset;
@@ -142,6 +143,51 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (containerDataChanged) container.saveData();
     }
 
+    private void extractDxWrapperFiles() {
+        String dxwrapper = container.getDXWrapper();
+        if (dxwrapper == null || !dxwrapper.contains("vegas")) return;
+
+        // Parse version from dxwrapperConfig (format: "version=X.Y.Z,...")
+        String dxwrapperConfig = container.getDXWrapperConfig();
+        String vegasVersion = DefaultVersion.getVegasDefault();
+        if (dxwrapperConfig != null && !dxwrapperConfig.isEmpty()) {
+            for (String part : dxwrapperConfig.split(",")) {
+                String[] kv = part.split("=", 2);
+                if (kv.length == 2 && kv[0].trim().equals("version")) {
+                    vegasVersion = kv[1].trim();
+                    break;
+                }
+            }
+        }
+
+        Log.d(TAG, "VEGAS wrapper version: " + vegasVersion);
+
+        ImageFs imageFs = environment.getImageFs();
+        Context context = environment.getContext();
+        File rootDir = imageFs.getRootDir();
+
+        String extraKey = "vegasVersion";
+        String prevVersion = container.getExtra(extraKey);
+
+        if (!vegasVersion.equals(prevVersion)) {
+            // Try installed content profile first (WCP download)
+            ContentProfile profile = contentsManager.getProfileByEntryName("vegas-" + vegasVersion);
+            if (profile != null) {
+                contentsManager.applyContent(profile);
+                Log.d(TAG, "Applied VEGAS content profile vegas-" + vegasVersion);
+            } else {
+                // Fall back to bundled asset shipped in APK
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context,
+                    "dxwrapper/vegas-" + vegasVersion + ".tzst", rootDir);
+                Log.d(TAG, "Extracted bundled vegas-" + vegasVersion + ".tzst");
+            }
+            container.putExtra(extraKey, vegasVersion);
+            container.saveData();
+        } else {
+            Log.d(TAG, "VEGAS " + vegasVersion + " already deployed (skipping)");
+        }
+    }
+
     public GuestProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile, Shortcut shortcut) {
         this.contentsManager = contentsManager;
         this.wineProfile = wineProfile;
@@ -155,6 +201,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 extractEmulatorsDlls();
             else
                 extractBox64Files();
+            extractDxWrapperFiles();
             checkDependencies();
             pid = execGuestProgram();
         }
