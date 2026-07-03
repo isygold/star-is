@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Help
 
@@ -37,6 +38,7 @@ import com.starwinmod.winlator.MainActivity
 import com.starwinmod.winlator.R
 import com.starwinmod.winlator.contentdialog.DXVKConfigDialog
 import com.starwinmod.winlator.contentdialog.WineD3DConfigDialog
+import com.starwinmod.winlator.ui.screens.VegasDownloadSheet
 import com.starwinmod.winlator.contents.AdrenotoolsManager
 import com.starwinmod.winlator.contents.ContentProfile
 import com.starwinmod.winlator.contents.ContentsManager
@@ -1451,7 +1453,7 @@ internal fun DxvkConfigDialog(
                         modifier = Modifier.weight(1f)
                     )
                     if (isVegas) {
-                        // File picker for manual .wcp install
+                        // ── Vegas install methods: GitHub download or local .wcp file ──
                         val vegasFilePicker = rememberLauncherForActivityResult(
                             contract = ActivityResultContracts.OpenDocument()
                         ) { uri: Uri? ->
@@ -1483,14 +1485,49 @@ internal fun DxvkConfigDialog(
                                 })
                             }
                         }
-                        OutlinedButton(
-                            onClick = { vegasFilePicker.launch(arrayOf("*/*")) },
-                            modifier = Modifier.size(40.dp),
-                            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
-                            contentPadding = PaddingValues(0.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.FolderOpen, contentDescription = "Install local .wcp", tint = MaterialTheme.colorScheme.primary)
+
+                        var showVegasInstallMenu by remember { mutableStateOf(false) }
+                        var showVegasDownloadSheet by remember { mutableStateOf(false) }
+
+                        Box {
+                            OutlinedButton(
+                                onClick = { showVegasInstallMenu = true },
+                                modifier = Modifier.size(40.dp),
+                                border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                                contentPadding = PaddingValues(0.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = "Install VEGAS", tint = MaterialTheme.colorScheme.primary)
+                            }
+                            DropdownMenu(
+                                expanded = showVegasInstallMenu,
+                                onDismissRequest = { showVegasInstallMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("GitHub fetch...") },
+                                    onClick = {
+                                        showVegasInstallMenu = false
+                                        showVegasDownloadSheet = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Download, contentDescription = null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Manual method") },
+                                    onClick = {
+                                        showVegasInstallMenu = false
+                                        vegasFilePicker.launch(arrayOf("*/*"))
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.FolderOpen, contentDescription = null) }
+                                )
+                            }
+                        }
+
+                        // GitHub releases download sheet (shown on top of this dialog)
+                        if (showVegasDownloadSheet) {
+                            VegasDownloadSheet(
+                                onDismiss = { showVegasDownloadSheet = false },
+                                onContentChanged = { localRefreshTrigger++ }
+                            )
                         }
                     } else {
                         OutlinedButton(
