@@ -250,6 +250,12 @@ fun ContainerDetailScreen(
             onContentChanged = { dialogRefreshTrigger++ }
         )
     }
+    if (showVegasDownloadSheet) {
+        VegasDownloadSheet(
+            onDismiss = { showVegasDownloadSheet = false },
+            onContentChanged = { dialogRefreshTrigger++ }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -578,12 +584,6 @@ private fun WineConfigTab(
                 options = viewModel.mouseWarpEntries,
                 selectedOption = viewModel.mouseWarpEntries.getOrElse(viewModel.selectedMouseWarpIndex) { "" },
                 onSelect = { opt -> viewModel.selectedMouseWarpIndex = viewModel.mouseWarpEntries.indexOf(opt).coerceAtLeast(0) }
-        )
-    }
-    if (showVegasDownloadSheet) {
-        VegasDownloadSheet(
-            onDismiss = { showVegasDownloadSheet = false },
-            onContentChanged = { dialogRefreshTrigger++ }
         )
     }
 }
