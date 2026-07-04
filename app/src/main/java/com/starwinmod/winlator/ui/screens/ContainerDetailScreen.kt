@@ -78,6 +78,7 @@ fun ContainerDetailScreen(
     var showFexCoreDownloadSheet by remember { mutableStateOf(false) }
     var showDxvkDownloadSheet    by remember { mutableStateOf(false) }
     var showVkd3dDownloadSheet   by remember { mutableStateOf(false) }
+    var showVegasDownloadSheet   by remember { mutableStateOf(false) }
 
     // AndroidView references for custom views
     val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
@@ -191,6 +192,7 @@ fun ContainerDetailScreen(
             onDismiss = { showDxvkConfig = false },
             onDownloadDxvk = { showDxvkDownloadSheet = true },
             onDownloadVkd3d = { showVkd3dDownloadSheet = true },
+            onDownloadVegas = { showVegasDownloadSheet = true },
             refreshTrigger = dialogRefreshTrigger,
         )
     }
@@ -576,9 +578,16 @@ private fun WineConfigTab(
                 options = viewModel.mouseWarpEntries,
                 selectedOption = viewModel.mouseWarpEntries.getOrElse(viewModel.selectedMouseWarpIndex) { "" },
                 onSelect = { opt -> viewModel.selectedMouseWarpIndex = viewModel.mouseWarpEntries.indexOf(opt).coerceAtLeast(0) }
-            )
-        }
+        )
     }
+    if (showVegasDownloadSheet) {
+        VegasDownloadSheet(
+            onDismiss = { showVegasDownloadSheet = false },
+            onContentChanged = { dialogRefreshTrigger++ }
+        )
+    }
+}
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1365,6 +1374,7 @@ internal fun DxvkConfigDialog(
     onDismiss: () -> Unit,
     onDownloadDxvk: () -> Unit = {},
     onDownloadVkd3d: () -> Unit = {},
+    onDownloadVegas: () -> Unit = {},
     refreshTrigger: Int = 0,
 ) {
     val context = LocalContext.current
@@ -1487,7 +1497,6 @@ internal fun DxvkConfigDialog(
                         }
 
                         var showVegasInstallMenu by remember { mutableStateOf(false) }
-                        var showVegasDownloadSheet by remember { mutableStateOf(false) }
 
                         Box {
                             OutlinedButton(
@@ -1507,7 +1516,7 @@ internal fun DxvkConfigDialog(
                                     text = { Text("GitHub fetch...") },
                                     onClick = {
                                         showVegasInstallMenu = false
-                                        showVegasDownloadSheet = true
+                                        onDownloadVegas()
                                     },
                                     leadingIcon = { Icon(Icons.Default.Download, contentDescription = null) }
                                 )
@@ -1520,14 +1529,6 @@ internal fun DxvkConfigDialog(
                                     leadingIcon = { Icon(Icons.Default.FolderOpen, contentDescription = null) }
                                 )
                             }
-                        }
-
-                        // GitHub releases download sheet (shown on top of this dialog)
-                        if (showVegasDownloadSheet) {
-                            VegasDownloadSheet(
-                                onDismiss = { showVegasDownloadSheet = false },
-                                onContentChanged = { localRefreshTrigger++ }
-                            )
                         }
                     } else {
                         OutlinedButton(
