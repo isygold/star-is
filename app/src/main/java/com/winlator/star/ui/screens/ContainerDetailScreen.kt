@@ -52,6 +52,7 @@ import com.winlator.star.widget.CPUListView
 import com.winlator.star.widget.EnvVarsView
 import com.winlator.star.widget.FrameRating
 import com.winlator.star.widget.FrameRatingHorizontal
+import com.winlator.star.ui.screens.VegasDownloadSheet
 
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
@@ -68,6 +69,8 @@ fun ContainerDetailScreen(
     var showDxvkConfig           by remember { mutableStateOf(false) }
     var showWineD3DConfig        by remember { mutableStateOf(false) }
     var showFpsConfig            by remember { mutableStateOf(false) }
+    var showVegasDownloadSheet   by remember { mutableStateOf(false) }
+    var dialogRefreshTrigger     by remember { mutableIntStateOf(0) }
 
     // AndroidView references for custom views
     val envVarsViewRef      = remember { mutableStateOf<EnvVarsView?>(null)      }
@@ -178,6 +181,12 @@ fun ContainerDetailScreen(
             onDismiss = { showWineD3DConfig = false }
         )
     }
+    if (showVegasDownloadSheet) {
+        VegasDownloadSheet(
+            onDismiss = { showVegasDownloadSheet = false },
+            onContentChanged = { dialogRefreshTrigger++ }
+        )
+    }
     if (showFpsConfig) {
         FpsCounterConfigDialog(
             initialConfig = viewModel.fpsCounterConfig,
@@ -277,7 +286,7 @@ private fun TopLevelFields(
             }
             IconButton(onClick = {
                 val wrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "")
-                if (wrapper.contains("dxvk")) onShowDxvkConfig() else onShowWineD3DConfig()
+                if (wrapper.contains("vegas")) { showVegasDownloadSheet = true } else if (wrapper.contains("dxvk")) onShowDxvkConfig() else onShowWineD3DConfig()
             }) {
                 Icon(Icons.Default.Settings, contentDescription = null)
             }
