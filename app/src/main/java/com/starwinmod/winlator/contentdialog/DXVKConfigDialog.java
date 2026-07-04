@@ -31,6 +31,8 @@ public class DXVKConfigDialog {
     public static final String[] VKD3D_FEATURE_LEVEL = {"12_0", "12_1", "12_2", "11_1", "11_0", "10_1", "10_0", "9_3", "9_2", "9_1"};
 
     private static final Pattern SEMVER = Pattern.compile("(\\d+)\\.(\\d+)(?:\\.(\\d+))?");
+    /** Matches the first version-like segment (digits separated by dots) in any string. */
+    private static final Pattern VERSION_IN_STRING = Pattern.compile("(\\d+(?:\\.\\d+)+)");
 
     public static Integer tryGetMajor(String s) {
         if (s == null) return null;
@@ -83,12 +85,15 @@ public class DXVKConfigDialog {
         List<String> list = new ArrayList<>(Arrays.asList(original));
 
         // vegas WCP profiles have type CONTENT_TYPE_VEGAS.
-        // verName may be "vegas-2.7.4", "2.7.4", or "v2.7.4" – strip known prefixes.
+        // Extract the first clean version-like segment from verName:
+        //   "vegas-2.7.3.1-vegas-ea958f2" → "2.7.3.1"
+        //   "vegas-2.7.3"                → "2.7.3"
+        //   "v2.7.3"                     → "2.7.3"
+        //   "2.7.4"                      → "2.7.4"
         for (ContentProfile profile : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)) {
             if (profile.verName == null) continue;
-            String ver = profile.verName;
-            if (ver.startsWith("vegas-")) ver = ver.substring("vegas-".length());
-            else if (ver.startsWith("v")) ver = ver.substring(1);
+            Matcher m = VERSION_IN_STRING.matcher(profile.verName);
+            String ver = m.find() ? m.group(1) : profile.verName;
             if (!ver.isEmpty() && !list.contains(ver)) list.add(ver);
         }
 
