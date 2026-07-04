@@ -17,6 +17,7 @@ import com.winlator.star.container.Shortcut;
 import com.winlator.star.contents.ContentProfile;
 import com.winlator.star.contents.ContentsManager;
 import com.winlator.star.core.Callback;
+import com.winlator.star.core.DefaultVersion;
 import com.winlator.star.core.EnvVars;
 import com.winlator.star.core.FileUtils;
 import com.winlator.star.core.GPUInformation;
@@ -27,6 +28,7 @@ import com.winlator.star.core.WineInfo;
 import com.winlator.star.fexcore.FEXCoreManager;
 import com.winlator.star.fexcore.FEXCorePreset;
 import com.winlator.star.fexcore.FEXCorePresetManager;
+import com.winlator.star.lsfg.LsfgConfig;
 import com.winlator.star.lsfg.LsfgManager;
 import com.winlator.star.xconnector.UnixSocketConfig;
 import com.winlator.star.xenvironment.EnvironmentComponent;
@@ -59,6 +61,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private final ContentProfile wineProfile;
     private Container container;
     private final Shortcut shortcut;
+    private static final String TAG = "GuestProgramLauncherComponent";
+
 
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
@@ -139,6 +143,51 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         if (containerDataChanged) container.saveData();
     }
 
+    private void extractDxWrapperFiles() {
+        String dxwrapper = container.getDXWrapper();
+        if (dxwrapper == null || !dxwrapper.contains("vegas")) return;
+
+        // Parse version from dxwrapperConfig (format: "version=X.Y.Z,...")
+        String dxwrapperConfig = container.getDXWrapperConfig();
+        String vegasVersion = DefaultVersion.getVegasDefault();
+        if (dxwrapperConfig != null && !dxwrapperConfig.isEmpty()) {
+            for (String part : dxwrapperConfig.split(",")) {
+                String[] kv = part.split("=", 2);
+                if (kv.length == 2 && kv[0].trim().equals("version")) {
+                    vegasVersion = kv[1].trim();
+                    break;
+                }
+            }
+        }
+
+        Log.d(TAG, "VEGAS wrapper version: " + vegasVersion);
+
+        ImageFs imageFs = environment.getImageFs();
+        Context context = environment.getContext();
+        File rootDir = imageFs.getRootDir();
+
+        String extraKey = "vegasVersion";
+        String prevVersion = container.getExtra(extraKey);
+
+        if (!vegasVersion.equals(prevVersion)) {
+            // Try installed content profile first (WCP download)
+            ContentProfile profile = contentsManager.getProfileByEntryName("vegas-" + vegasVersion);
+            if (profile != null) {
+                contentsManager.applyContent(profile);
+                Log.d(TAG, "Applied VEGAS content profile vegas-" + vegasVersion);
+            } else {
+                // Fall back to bundled asset shipped in APK
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context,
+                    "dxwrapper/vegas-" + vegasVersion + ".tzst", rootDir);
+                Log.d(TAG, "Extracted bundled vegas-" + vegasVersion + ".tzst");
+            }
+            container.putExtra(extraKey, vegasVersion);
+            container.saveData();
+        } else {
+            Log.d(TAG, "VEGAS " + vegasVersion + " already deployed (skipping)");
+        }
+    }
+
     public GuestProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile, Shortcut shortcut) {
         this.contentsManager = contentsManager;
         this.wineProfile = wineProfile;
@@ -152,6 +201,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 extractEmulatorsDlls();
             else
                 extractBox64Files();
+            extractDxWrapperFiles();
             checkDependencies();
             pid = execGuestProgram();
         }
@@ -162,7 +212,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         String curlPath = environment.getImageFs().getRootDir().getPath() + "/usr/lib/libXau.so";
         String lddCommand = "ldd " + curlPath;
 
-        StringBuilder output = new StringBuilder("Checking Curl dependencies...\n");
+        StringBuilder output = new StringBuilder("Checking Curl dependencies...
+");
 
         try {
             java.lang.Process process = Runtime.getRuntime().exec(lddCommand);
@@ -171,10 +222,12 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                output.append(line).append("
+");
             }
             while ((line = errorReader.readLine()) != null) {
-                output.append(line).append("\n");
+                output.append(line).append("
+");
             }
 
             process.waitFor();
@@ -379,33 +432,53 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             envVars.putAll(this.envVars);
         }
 
-        // LSFG (Lossless Scaling Frame Generation) — if enabled
+        // LSFG (Lossless Scaling Frame Generation) -- if enabled
         {
+            // Resolve effective lsfgEnabled: container config, then shortcut override
             boolean lsfgEnabled = container.isLsfgEnabled();
-            // Ensure the LSFG Vulkan layer files are installed
-            if (lsfgEnabled) {
-                LsfgManager.ensureLayerInstalled(context, rootDir);
-            }
             if (shortcut != null) {
                 String lsfgExtra = shortcut.getExtra("lsfgEnabled", "");
                 if (!lsfgExtra.isEmpty()) lsfgEnabled = lsfgExtra.equals("1");
             }
+
             if (lsfgEnabled) {
-                String lsfgDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d/lsfg";
-                String vkLayerPath = envVars.get("VK_LAYER_PATH");
-                envVars.put("VK_LAYER_PATH", lsfgDir + (vkLayerPath.isEmpty() ? "" : ":" + vkLayerPath));
-                // Also add the parent layer dir so the Vulkan loader finds the manifest
-                String parentLayerDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d";
-                if (!vkLayerPath.contains(parentLayerDir)) {
-                    envVars.put("VK_LAYER_PATH", parentLayerDir + ":" + envVars.get("VK_LAYER_PATH"));
+                boolean layerOk = LsfgManager.ensureLayerInstalled(context, rootDir);
+                if (layerOk) {
+                    String lsfgDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d/lsfg";
+                    String vkLayerPath = envVars.get("VK_LAYER_PATH");
+                    envVars.put("VK_LAYER_PATH", lsfgDir + (vkLayerPath.isEmpty() ? "" : ":" + vkLayerPath));
+                    // Also add the parent layer dir so the Vulkan loader finds the manifest
+                    String parentLayerDir = rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d";
+                    if (!vkLayerPath.contains(parentLayerDir)) {
+                        envVars.put("VK_LAYER_PATH", parentLayerDir + ":" + envVars.get("VK_LAYER_PATH"));
+                    }
+                    String ldLibPath = envVars.get("LD_LIBRARY_PATH");
+                    envVars.put("LD_LIBRARY_PATH", lsfgDir + (ldLibPath.isEmpty() ? "" : ":" + ldLibPath));
+                    envVars.put("LSFG_MULTIPLIER", String.valueOf(container.getLsfgMultiplier()));
+                    envVars.put("LSFG_QUALITY", container.getLsfgQuality());
+                    envVars.put("LSFG_FLOW_SCALE", String.valueOf(container.getLsfgFlowScale()));
+                    envVars.put("LSFG_MAX_LATENCY", String.valueOf(container.getLsfgMaxLatency()));
+                    envVars.put("LSFG_GPU_ARCH", container.getLsfgGpuArch());
+
+                    // Install custom lossless.dll if provided
+                    if (container.isLsfgCustomDllEnabled()) {
+                        String dllPath = container.getLsfgCustomDllPath();
+                        if (dllPath != null && !dllPath.isEmpty()) {
+                            File dllFile = new File(dllPath);
+                            if (LsfgManager.installCustomDll(rootDir, dllFile)) {
+                                String dllContainerPath = LsfgManager.getDllPath(rootDir).getPath();
+                                envVars.put(LsfgManager.LSFG_DLL_PATH_ENV, dllContainerPath);
+                                Log.d(TAG, "Custom lossless.dll installed, " + LsfgManager.LSFG_DLL_PATH_ENV + "=" + dllContainerPath);
+                            } else {
+                                Log.w(TAG, "Failed to install custom lossless.dll from: " + dllPath);
+                            }
+                        } else {
+                            Log.w(TAG, "Custom DLL enabled but no path configured");
+                        }
+                    }
+                } else {
+                    Log.w(TAG, "LSFG layer installation failed -- frame generation disabled");
                 }
-                String ldLibPath = envVars.get("LD_LIBRARY_PATH");
-                envVars.put("LD_LIBRARY_PATH", lsfgDir + (ldLibPath.isEmpty() ? "" : ":" + ldLibPath));
-                envVars.put("LSFG_MULTIPLIER", String.valueOf(container.getLsfgMultiplier()));
-                envVars.put("LSFG_QUALITY", container.getLsfgQuality());
-                envVars.put("LSFG_FLOW_SCALE", String.valueOf(container.getLsfgFlowScale()));
-                envVars.put("LSFG_MAX_LATENCY", String.valueOf(container.getLsfgMaxLatency()));
-                envVars.put("LSFG_GPU_ARCH", container.getLsfgGpuArch());
             }
         }
 

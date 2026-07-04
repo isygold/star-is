@@ -12,6 +12,7 @@ import com.winlator.star.core.KeyValueSet;
 import com.winlator.star.core.WineInfo;
 import com.winlator.star.core.WineThemeManager;
 import com.winlator.star.fexcore.FEXCorePreset;
+import com.winlator.star.lsfg.LsfgConfig;
 import com.winlator.star.winhandler.WinHandler;
 import com.winlator.star.xenvironment.ImageFs;
 
@@ -32,12 +33,12 @@ public class Container {
     public static final String DEFAULT_GRAPHICS_DRIVER = "wrapper";
     public static final String DEFAULT_AUDIO_DRIVER = "alsa";
     public static final String DEFAULT_EMULATOR = "FEXCore";
-    public static final String DEFAULT_DXWRAPPER = "dxvk+vkd3d";
-    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.getDxvkDefault() + ",framerate=0,async=0,asyncCache=0" + ",vkd3dVersion=" + DefaultVersion.VKD3D + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";
+    public static final String DEFAULT_DXWRAPPER = "vegas";
+    public static final String DEFAULT_DXWRAPPERCONFIG = "version=" + DefaultVersion.getVegasDefault() + ",framerate=0,async=0,asyncCache=0" + ",vkd3dVersion=2.8" + ",vkd3dLevel=12_1" + ",ddrawrapper=" + Container.DEFAULT_DDRAWRAPPER + ",csmt=3" + ",gpuName=NVIDIA GeForce GTX 480" + ",videoMemorySize=2048" + ",strict_shader_math=1" + ",OffscreenRenderingMode=fbo" + ",renderer=gl";
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG =
-            "vulkanVersion=1.3" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device";
+            "vulkanVersion=1.3" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device" + ";fdDevFeatures=0";
     public static final String DEFAULT_DDRAWRAPPER = "none";
-    public static final String DEFAULT_FPS_COUNTER_CONFIG = "showFPS=1,showCPULoad=0,showGPULoad=0,showRAM=0,showRenderer=0,showBatteryTemp=0,showBatteryVoltage=0,hudScale=100";
+    public static final String DEFAULT_FPS_COUNTER_CONFIG = "hudMode=horizontal,showFPS=1,showCPULoad=0,showGPULoad=0,showRAM=0,showRenderer=0,showBatteryTemp=0,hudScale=100";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=0,directmusic=0,directshow=0,directplay=0,xaudio=0,vcrun2010=1";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,xaudio=1,vcrun2010=1";
     public static final String DEFAULT_DRIVES = "F:"+Environment.getExternalStorageDirectory().getAbsolutePath()+"D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -47,6 +48,8 @@ public class Container {
     public static final int DEFAULT_LSFG_FLOW_SCALE = 100;
     public static final int DEFAULT_LSFG_MAX_LATENCY = 16;
     public static final String DEFAULT_LSFG_GPU_ARCH = "auto";
+    public static final boolean DEFAULT_LSFG_CUSTOM_DLL_ENABLED = false;
+    public static final String DEFAULT_LSFG_CUSTOM_DLL_PATH = "";
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
@@ -89,6 +92,8 @@ public class Container {
     private int lsfgFlowScale = DEFAULT_LSFG_FLOW_SCALE;
     private int lsfgMaxLatency = DEFAULT_LSFG_MAX_LATENCY;
     private String lsfgGpuArch = DEFAULT_LSFG_GPU_ARCH;
+    private boolean lsfgCustomDllEnabled = DEFAULT_LSFG_CUSTOM_DLL_ENABLED;
+    private String lsfgCustomDllPath = DEFAULT_LSFG_CUSTOM_DLL_PATH;
     private ContainerManager containerManager;
 
 
@@ -437,6 +442,35 @@ public Container(int id) {
     public String getLsfgGpuArch() { return lsfgGpuArch; }
     public void setLsfgGpuArch(String lsfgGpuArch) { this.lsfgGpuArch = lsfgGpuArch; }
 
+    public boolean isLsfgCustomDllEnabled() { return lsfgCustomDllEnabled; }
+    public void setLsfgCustomDllEnabled(boolean enabled) { this.lsfgCustomDllEnabled = enabled; }
+    public String getLsfgCustomDllPath() { return lsfgCustomDllPath; }
+    public void setLsfgCustomDllPath(String path) { this.lsfgCustomDllPath = path != null ? path : ""; }
+
+    /** @return All LSFG settings as an immutable [LsfgConfig]. */
+    public LsfgConfig getLsfgConfig() {
+        return new LsfgConfig(
+            lsfgMultiplier,
+            lsfgQuality,
+            lsfgFlowScale,
+            lsfgMaxLatency,
+            lsfgGpuArch,
+            lsfgCustomDllEnabled,
+            lsfgCustomDllPath
+        );
+    }
+
+    /** Apply all LSFG settings from an [LsfgConfig] at once. */
+    public void setLsfgConfig(LsfgConfig cfg) {
+        this.lsfgMultiplier = cfg.getMultiplier();
+        this.lsfgQuality = cfg.getQuality();
+        this.lsfgFlowScale = cfg.getFlowScale();
+        this.lsfgMaxLatency = cfg.getMaxLatency();
+        this.lsfgGpuArch = cfg.getGpuArch();
+        this.lsfgCustomDllEnabled = cfg.isCustomDllEnabled();
+        this.lsfgCustomDllPath = cfg.getCustomDllPath();
+    }
+
     public Iterable<String[]> drivesIterator() {
         return drivesIterator(drives);
     }
@@ -500,6 +534,8 @@ public Container(int id) {
             data.put("lsfgFlowScale", lsfgFlowScale);
             data.put("lsfgMaxLatency", lsfgMaxLatency);
             data.put("lsfgGpuArch", lsfgGpuArch);
+            data.put("lsfgCustomDllEnabled", lsfgCustomDllEnabled);
+            data.put("lsfgCustomDllPath", lsfgCustomDllPath);
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -626,6 +662,12 @@ public Container(int id) {
                 case "lsfgGpuArch" :
                     setLsfgGpuArch(data.getString(key));
                     break;
+                case "lsfgCustomDllEnabled" :
+                    setLsfgCustomDllEnabled(data.getBoolean(key));
+                    break;
+                case "lsfgCustomDllPath" :
+                    setLsfgCustomDllPath(data.getString(key));
+                    break;
             }
         }
     }
@@ -717,12 +759,3 @@ public Container(int id) {
     }
 
 }
-
-
-
-
-
-
-
-
-
