@@ -36,7 +36,10 @@ import com.winlator.star.contentdialog.DXVKConfigDialog
 import com.winlator.star.contentdialog.WineD3DConfigDialog
 import com.winlator.star.contents.AdrenotoolsManager
 import com.winlator.star.contents.ContentsManager
+import android.widget.Toast
 import com.winlator.star.core.AppUtils
+import com.winlator.star.contents.ContentProfile
+import java.util.concurrent.Executors
 import com.winlator.star.core.DefaultVersion
 import com.winlator.star.core.FileUtils
 import com.winlator.star.core.GPUInformation
@@ -284,11 +287,70 @@ private fun TopLevelFields(
                     Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
             }
-            IconButton(onClick = {
-                val wrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "")
-                if (wrapper.contains("vegas")) { showVegasDownloadSheet = true } else if (wrapper.contains("dxvk")) onShowDxvkConfig() else onShowWineD3DConfig()
-            }) {
-                Icon(Icons.Default.Settings, contentDescription = null)
+            val wrapper = StringUtils.parseIdentifier(viewModel.selectedDXWrapper ?: "")
+            if (wrapper.contains("vegas")) {
+                var showVegasInstallMenu by remember { mutableStateOf(false) }
+                val vegasFilePicker = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.OpenDocument()
+                ) { uri: Uri? ->
+                    if (uri == null) return@rememberLauncherForActivityResult
+                    val activity = context as? androidx.appcompat.app.AppCompatActivity ?: return@rememberLauncherForActivityResult
+                    val cm = ContentsManager(context)
+                    Executors.newSingleThreadExecutor().execute {
+                        cm.extraContentFile(uri, object : ContentsManager.OnInstallFinishedCallback {
+                            var phase = 0
+                            override fun onFailed(reason: ContentsManager.InstallFailedReason, e: Exception?) {
+                                activity.runOnUiThread {
+                                    Toast.makeText(context, "Install failed: $reason", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                            override fun onSucceed(profile: ContentProfile) {
+                                if (phase == 0) {
+                                    phase = 1
+                                    cm.finishInstallContent(profile, this)
+                                } else {
+                                    cm.applyContent(profile)
+                                    cm.syncContents()
+                                    activity.runOnUiThread {
+                                        val ver = profile.verName?.removePrefix("vegas-") ?: "unknown"
+                                        Toast.makeText(context, "vegas $ver installed successfully", Toast.LENGTH_SHORT).show()
+                                        dialogRefreshTrigger++
+                                    }
+                                }
+                            }
+                        })
+                    }
+                }
+                Box {
+                    IconButton(onClick = { showVegasInstallMenu = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = showVegasInstallMenu,
+                        onDismissRequest = { showVegasInstallMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Download") },
+                            onClick = {
+                                showVegasInstallMenu = false
+                                showVegasDownloadSheet = true
+                            },
+                            leadingIcon = { Icon(Icons.Default.FolderOpen, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Pick Locally") },
+                            onClick = {
+                                showVegasInstallMenu = false
+                                vegasFilePicker.launch(arrayOf("*/*"))
+                            },
+                            leadingIcon = { Icon(Icons.Default.Add, contentDescription = null) }
+                        )
+                    }
+                }
+            } else if (wrapper.contains("dxvk")) {
+                onShowDxvkConfig()
+            } else {
+                onShowWineD3DConfig()
             }
         }
         Spacer(Modifier.height(8.dp))
