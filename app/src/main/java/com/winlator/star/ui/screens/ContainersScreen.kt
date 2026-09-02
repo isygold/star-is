@@ -457,7 +457,7 @@ private fun VegasContainerCard(
                     }
 
                     // Box64 indicator
-                    if (container.box64Preset != 0) {
+                    if (container.box64Preset != com.winlator.star.box64.Box64Preset.COMPATIBILITY) {
                         Box(
                             modifier = Modifier
                                 .background(Tertiary.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
