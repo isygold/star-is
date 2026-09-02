@@ -99,11 +99,9 @@ fun VegasDownloadSheet(
     // Load locally installed VEGAS profiles to mark them
     LaunchedEffect(Unit) {
         cm.syncContents()
-        val installed = cm.profiles.filter {
-            it.type == ContentProfile.CONTENT_TYPE_VEGAS
-        }.mapNotNull { profile ->
-            profile.verName?.removePrefix("vegas-")
-        }.toSet()
+        val installed = cm.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VEGAS)
+            ?.mapNotNull { it.verName?.removePrefix("vegas-") }
+            ?.toSet() ?: emptySet()
         installedVersions = installed
     }
 
@@ -229,10 +227,12 @@ fun VegasDownloadSheet(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "VEGAS DOWNLOADS",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp,
-                                brush = Brush.linearGradient(listOf(Primary, Secondary)),
+                                style = androidx.compose.ui.text.TextStyle(
+                                    brush = Brush.linearGradient(listOf(Primary, Secondary)),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 2.sp,
+                                ),
                             )
                             Text(
                                 text = "Select a release to download and install",
