@@ -263,10 +263,12 @@ fun SplashScreen(
             // ── "VEGAS" wordmark ──
             Text(
                 text = "VEGAS",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 6.sp,
-                brush = VegasLogoGradient,
+                style = androidx.compose.ui.text.TextStyle(
+                    brush = VegasLogoGradient,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 6.sp,
+                ),
                 textAlign = TextAlign.Center,
             )
 
