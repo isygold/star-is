@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -125,10 +125,12 @@ fun AppDrawerContent(
                         )
                         Text(
                             text = "POWERED BY VEGAS",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            brush = Brush.linearGradient(listOf(Primary, Secondary)),
+                            style = androidx.compose.ui.text.TextStyle(
+                                brush = Brush.linearGradient(listOf(Primary, Secondary)),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp,
+                            ),
                         )
                     }
                 }
@@ -146,14 +148,14 @@ fun AppDrawerContent(
             }
         }
 
-        Divider(color = DividerColor)
+        HorizontalDivider(color = DividerColor)
 
         SectionHeader("Emulation")
         DrawerItem(Screen.Shortcuts,     currentRoute, onNavigate)
         DrawerItem(Screen.Containers,    currentRoute, onNavigate)
         DrawerItem(Screen.Settings,      currentRoute, onNavigate)
 
-        Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
+        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
 
         SectionHeader("Tools")
         DrawerItem(Screen.InputControls, currentRoute, onNavigate)
@@ -161,14 +163,14 @@ fun AppDrawerContent(
         DrawerItem(Screen.Saves,         currentRoute, onNavigate)
         DrawerItem(Screen.LsfgSettings,  currentRoute, onNavigate)
 
-        Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
+        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
 
         SectionHeader("Game Stores")
         Screen.storeItems.forEach { screen ->
             DrawerStoreItem(screen, onLaunchStore)
         }
 
-        Divider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
+        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(top = 4.dp))
 
         SectionHeader("About And Support")
         DrawerIconItem(
